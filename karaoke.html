@@ -1,0 +1,2354 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Karaokê — Fila</title>
+<!-- VERSAO_ARQUIVO: 2026-07-17-colunas-v1 -->
+<script>console.log('%cKaraokê — versão do arquivo: 2026-07-17-colunas-v1', 'font-size:14px; font-weight:bold; color:#FF2E88;');</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #0B0B12;
+    --bg-raised: #15141F;
+    --neon-pink: #FF2E88;
+    --neon-cyan: #2EE6FF;
+    --text: #F5F3FF;
+    --muted: #8886A3;
+    --line: #29283A;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;min-height:100%;background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;}
+  .hidden{display:none !important;}
+
+  /* ---------- Escolha de visão ---------- */
+  #chooser{
+    height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:28px;
+    background:radial-gradient(ellipse at 50% 30%, #1c1a2c 0%, var(--bg) 65%);
+  }
+  #chooser h1{
+    font-family:'Bebas Neue',sans-serif; font-size:64px; letter-spacing:3px; margin:0;
+    background:linear-gradient(90deg,var(--neon-pink),var(--neon-cyan));
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  .choice-row{display:flex; gap:24px;}
+  .choice-btn{
+    font-family:'Inter'; font-weight:600; font-size:16px; color:var(--text);
+    background:var(--bg-raised); border:1px solid var(--line); border-radius:12px;
+    padding:22px 30px; cursor:pointer; text-decoration:none; display:block; min-width:220px; text-align:center;
+    transition:border-color .15s ease, transform .15s ease;
+  }
+  .choice-btn:hover{border-color:var(--neon-pink); transform:translateY(-2px);}
+  .choice-btn small{display:block; color:var(--muted); font-weight:400; margin-top:6px; font-size:13px;}
+
+  .chooser-ip-panel{
+    background:var(--bg-raised); border:1px solid var(--line); border-radius:14px;
+    padding:18px 22px; max-width:420px; width:100%; display:flex; flex-direction:column; gap:10px;
+  }
+  .chooser-ip-panel label{font-size:13px; color:var(--muted); line-height:1.4;}
+  .chooser-ip-row{display:flex; gap:8px;}
+  .chooser-ip-row input{
+    background:#0e0d17; border:1px solid var(--line); border-radius:8px; color:var(--text);
+    padding:10px 12px; font-size:14px; font-family:'Inter'; flex:1; min-width:0;
+  }
+  .chooser-ip-row input:focus{outline:none; border-color:var(--neon-cyan);}
+
+  /* ---------- PALCO ---------- */
+  #palco{
+    height:100vh; width:100vw; background:#000; overflow:hidden;
+    display:flex; flex-direction:row;
+  }
+  .palco-video-col{position:relative; flex:1; min-width:0; height:100%; background:#000;}
+  #player-wrap{position:absolute; inset:0;}
+  #ytplayer{width:100%; height:100%;}
+  #idle-screen{
+    position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    background:radial-gradient(circle at 50% 40%, #1a1830 0%, #000 70%);
+    text-align:center;
+  }
+  #idle-screen .marquee{
+    font-family:'Bebas Neue',sans-serif; font-size:min(9vw,120px); letter-spacing:6px;
+    color:var(--neon-pink); text-shadow:0 0 18px rgba(255,46,136,.65), 0 0 40px rgba(255,46,136,.35);
+    animation:flicker 3.2s infinite;
+  }
+  @keyframes flicker{
+    0%,19%,21%,23%,80%,100%{opacity:1;}
+    20%,22%,79%{opacity:.75;}
+  }
+  #idle-screen p{color:var(--muted); font-size:20px; margin-top:18px; letter-spacing:.5px; padding:0 20px;}
+  #idle-screen .hint{position:absolute; bottom:36px; color:var(--muted); font-size:14px; opacity:.6;}
+
+  .palco-sidebar{
+    flex-shrink:0; width:280px; height:100%; box-sizing:border-box;
+    background:var(--bg-raised); border-left:1px solid rgba(255,255,255,0.08);
+    display:flex; flex-direction:column; align-items:center; gap:22px;
+    padding:28px 22px; overflow-y:auto;
+  }
+  .palco-qr-area{display:flex; flex-direction:column; align-items:center; gap:10px; flex-shrink:0;}
+  #palco-qr-box{
+    width:170px; height:170px; background:#fff; border-radius:12px; padding:10px;
+    display:flex; align-items:center; justify-content:center;
+  }
+  #palco-qr-box span{color:#999; font-size:11px; text-align:center; font-family:'Inter',sans-serif;}
+  .palco-qr-legenda{color:var(--text); font-size:13px; text-align:center; line-height:1.4; font-family:'Inter',sans-serif;}
+  .palco-fila-area{width:100%;}
+  .palco-fila-titulo{
+    color:var(--neon-cyan); font-size:12px; letter-spacing:1.2px; font-weight:700;
+    font-family:'Inter',sans-serif; margin-bottom:10px; text-align:center;
+  }
+  #palco-fila-lista{display:flex; flex-direction:column; gap:10px;}
+  .palco-fila-item{display:flex; gap:8px; align-items:baseline; font-family:'Inter',sans-serif;}
+  .palco-fila-item .num{color:var(--muted); font-size:13px; font-weight:700; flex-shrink:0; width:16px;}
+  .palco-fila-item .txt{min-width:0;}
+  .palco-fila-item .titulo{
+    color:var(--text); font-size:14px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .palco-fila-item .cantor{color:var(--neon-cyan); font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .palco-fila-vazia{color:var(--muted); font-size:13px; font-family:'Inter',sans-serif; text-align:center;}
+  .palco-fila-mais{color:var(--muted); font-size:12px; font-family:'Inter',sans-serif; margin-top:2px; text-align:center;}
+
+  /* ---------- CONTROLE ---------- */
+  #controle{min-height:100vh; display:flex; flex-direction:column; padding:28px 34px; gap:20px; max-width:820px; margin:0 auto; box-sizing:border-box;}
+  #convidado{min-height:100vh; display:flex; flex-direction:column; padding:24px 20px; gap:16px; max-width:520px; margin:0 auto; box-sizing:border-box;}
+  #convidado h1{font-family:'Bebas Neue'; font-size:30px; letter-spacing:2px; margin:0; color:var(--text);}
+  #convidado h1 span{color:var(--neon-pink);}
+  #controle h1{font-family:'Bebas Neue'; font-size:38px; letter-spacing:2px; margin:0; color:var(--text);}
+  #controle h1 span{color:var(--neon-pink);}
+  .panel{background:var(--bg-raised); border:1px solid var(--line); border-radius:14px; padding:20px;}
+  .panel h2{font-size:13px; text-transform:uppercase; letter-spacing:1.2px; color:var(--muted); margin:0 0 14px;}
+  .row{display:flex; gap:10px; margin-bottom:10px;}
+  input[type=text]{
+    flex:1; background:#0e0d17; border:1px solid var(--line); border-radius:8px; color:var(--text);
+    padding:12px 14px; font-size:15px; font-family:'Inter';
+  }
+  input[type=text]:focus{outline:none; border-color:var(--neon-cyan);}
+  button{
+    font-family:'Inter'; font-weight:600; font-size:14px; cursor:pointer; border:none; border-radius:8px;
+    padding:12px 18px; transition:transform .1s ease, opacity .15s ease;
+  }
+  button:active{transform:scale(.97);}
+  .btn-primary{background:var(--neon-pink); color:#fff;}
+  .btn-secondary{background:transparent; border:1px solid var(--line); color:var(--text);}
+  .btn-ghost{background:transparent; color:var(--muted); padding:6px 10px; font-size:13px;}
+  .btn-ghost:hover{color:var(--text);}
+  .btn-danger{color:#FF6B6B;}
+  #agora-tocando{display:flex; align-items:center; justify-content:space-between; gap:12px;}
+  #agora-tocando .info{display:flex; flex-direction:column; gap:2px;}
+  #agora-tocando .titulo{font-weight:600; font-size:16px;}
+  #agora-tocando .cantor{color:var(--neon-cyan); font-size:13px;}
+  #agora-tocando .vazio{color:var(--muted); font-style:italic; font-size:14px;}
+  #fila{flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:8px;}
+  .fila-item{
+    display:flex; align-items:center; gap:10px; background:#0e0d17; border:1px solid var(--line);
+    border-radius:10px; padding:10px 12px;
+  }
+  .fila-item .pos{font-family:'Bebas Neue'; font-size:20px; color:var(--muted); width:28px; text-align:center;}
+  .fila-item .info{flex:1; min-width:0;}
+  .fila-item .titulo{font-weight:600; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .fila-item .cantor{color:var(--neon-cyan); font-size:12px;}
+  .fila-item .acoes{display:flex; gap:4px;}
+  .fila-vazia-msg{color:var(--muted); text-align:center; padding:24px; font-size:14px;}
+  .link-palco{margin-top:auto; font-size:12px; color:var(--muted); display:flex; align-items:center; gap:8px; flex-wrap:wrap;}
+  .link-palco code{background:#0e0d17; padding:4px 8px; border-radius:6px; color:var(--neon-cyan);}
+
+  #painel-convidados{display:flex; gap:20px; align-items:center;}
+  #painel-convidados .config{flex:1; display:flex; flex-direction:column; gap:8px;}
+  #painel-convidados .ip-row{display:flex; gap:8px;}
+  #painel-convidados small{color:var(--muted); font-size:12px; line-height:1.5;}
+  #qr-box{
+    width:220px; height:220px; background:#fff; border-radius:12px; padding:16px;
+    display:flex; align-items:center; justify-content:center; flex-shrink:0;
+  }
+  #qr-box.empty{background:var(--bg-raised); border:1px dashed var(--line);}
+  #qr-box.empty span{color:var(--muted); font-size:11px; text-align:center; padding:8px;}
+  #qr-url-final{font-size:12px; color:var(--neon-cyan); word-break:break-all;}
+
+  /* ---------- RESPONSIVO (celular) ---------- */
+  @media (max-width: 640px){
+    #controle{padding:18px 16px; gap:14px;}
+    #controle h1{font-size:28px;}
+    .panel{padding:14px;}
+    .row{flex-direction:column; gap:8px;}
+    .row input[type=text]{width:100%;}
+    .row button{width:100%;}
+    #agora-tocando{flex-direction:column; align-items:stretch; gap:10px;}
+    #agora-tocando button{width:100%;}
+    #painel-convidados{flex-direction:column; align-items:stretch;}
+    #qr-box{width:100%; height:auto; aspect-ratio:1/1; max-width:280px; margin:0 auto;}
+    .ip-row{flex-direction:column;}
+    .ip-row input, .ip-row button{width:100%;}
+    .link-palco{flex-direction:column; align-items:flex-start;}
+    .link-palco code{word-break:break-all;}
+    #chooser{padding:20px; gap:20px;}
+    #chooser h1{font-size:44px; text-align:center;}
+    .choice-row{flex-direction:column; width:100%; max-width:340px;}
+    .chooser-ip-panel{max-width:340px;}
+    .chooser-ip-row{flex-direction:column;}
+    .chooser-ip-row input{max-width:none !important;}
+  }
+</style>
+</head>
+<body>
+
+<!-- Tela inicial: escolher a visão -->
+<div id="chooser">
+  <h1>KARAOKÊ &middot; FILA</h1>
+
+  <div class="chooser-ip-panel">
+    <label for="chooser-ip">IP do notebook (deixe "localhost" se estiver abrindo neste mesmo computador)</label>
+    <div class="chooser-ip-row">
+      <input type="text" id="chooser-ip" placeholder="ex: 192.168.0.214">
+      <input type="text" id="chooser-porta" placeholder="porta" style="max-width:90px;">
+    </div>
+  </div>
+
+  <div class="choice-row">
+    <button class="choice-btn" id="btn-ir-palco">🎤 Abrir Palco<small>Arraste esta janela para a TV e deixe em tela cheia</small></button>
+    <button class="choice-btn" id="btn-ir-controle">📋 Abrir Controle<small>Fica no notebook — escolher músicas e gerenciar a fila</small></button>
+  </div>
+  <div style="color:rgba(255,255,255,0.25); font-size:11px; font-family:'Inter',sans-serif;">v2026-07-17-colunas-v1</div>
+</div>
+
+<!-- PALCO (vai para a TV) -->
+<div id="palco" class="hidden">
+  <div class="palco-video-col">
+    <div style="position:absolute; bottom:6px; left:8px; z-index:30; color:rgba(255,255,255,0.25); font-size:11px; font-family:'Inter',sans-serif;">v2026-07-17-colunas-v1</div>
+    <div id="player-wrap"><div id="ytplayer"></div></div>
+    <div id="idle-screen">
+      <div class="marquee">KARAOKÊ</div>
+      <p id="idle-msg">Fila vazia — adicione uma música no notebook do controle</p>
+      <div class="hint">Peça para o DJ colocar sua música na fila 🎶</div>
+    </div>
+  </div>
+
+  <div class="palco-sidebar">
+    <div class="palco-qr-area">
+      <div id="palco-qr-box"><span>gerando QR...</span></div>
+      <div class="palco-qr-legenda">📱 Aponte a câmera<br>e peça sua música</div>
+    </div>
+    <div class="palco-fila-area">
+      <div class="palco-fila-titulo">PRÓXIMAS DA FILA</div>
+      <div id="palco-fila-lista"><div class="palco-fila-vazia">Fila vazia</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- CONTROLE (fica no notebook) -->
+<div id="controle" class="hidden">
+  <h1>KARAOKÊ <span>CONTROLE</span></h1>
+
+  <div class="panel">
+    <h2>Adicionar música à fila</h2>
+    <div class="row">
+      <input type="text" id="input-link" placeholder="Cole o link do YouTube aqui (ex: https://youtu.be/...)">
+    </div>
+    <div class="row">
+      <input type="text" id="input-cantor" placeholder="Nome de quem vai cantar">
+      <button class="btn-primary" id="btn-add">Adicionar à fila</button>
+    </div>
+    <div class="row">
+      <input type="text" id="input-busca" placeholder="Ou pesquise: digite o nome da música">
+      <button class="btn-secondary" id="btn-busca">Buscar no YouTube ↗</button>
+    </div>
+  </div>
+
+  <div class="panel" id="agora-tocando">
+    <div class="info">
+      <h2 style="margin-bottom:4px;">Tocando agora</h2>
+      <div class="titulo" id="agora-titulo">—</div>
+      <div class="cantor" id="agora-cantor"></div>
+    </div>
+    <button class="btn-secondary btn-danger" id="btn-pular">Pular ⏭</button>
+  </div>
+
+  <div class="panel" style="flex:1; display:flex; flex-direction:column; min-height:0;">
+    <h2>Próximas da fila</h2>
+    <div id="fila"></div>
+  </div>
+
+  <div class="panel" id="painel-convidados">
+    <div class="config">
+      <h2>Convidados pelo celular</h2>
+      <div class="ip-row">
+        <input type="text" id="input-ip" placeholder="IP do notebook, ex: 192.168.1.42">
+        <button class="btn-secondary" id="btn-gerar-qr">Gerar QR Code</button>
+      </div>
+      <small>
+        Descubra o IP no Terminal do Mac com: <code style="background:#0e0d17;padding:2px 6px;border-radius:4px;">ipconfig getifaddr en0</code><br>
+        Celular precisa estar na mesma rede Wi-Fi.<br>
+        Quem entrar por este QR só consegue <b style="color:var(--text);">adicionar músicas</b> — não vê os botões de pular, remover ou reordenar a fila.
+      </small>
+      <div id="qr-url-final"></div>
+    </div>
+    <div id="qr-box" class="empty"><span>o QR aparece aqui</span></div>
+  </div>
+
+  <div class="link-palco">
+    Link do Palco (abrir na TV): <code id="link-palco-txt"></code>
+    <button class="btn-ghost" id="btn-copiar-link">Copiar link</button>
+  </div>
+</div>
+
+<!-- CONVIDADO (tela simplificada — acessada via QR Code pelo celular) -->
+<div id="convidado" class="hidden">
+  <h1>KARAOKÊ <span>PEDIR MÚSICA</span></h1>
+
+  <div class="panel">
+    <h2>Adicionar música à fila</h2>
+    <div class="row">
+      <input type="text" id="input-link-conv" placeholder="Cole o link do YouTube aqui (ex: https://youtu.be/...)">
+    </div>
+    <div class="row">
+      <input type="text" id="input-cantor-conv" placeholder="Seu nome">
+      <button class="btn-primary" id="btn-add-conv">Adicionar à fila</button>
+    </div>
+    <div class="row">
+      <input type="text" id="input-busca-conv" placeholder="Ou pesquise: digite o nome da música">
+      <button class="btn-secondary" id="btn-busca-conv">Buscar no YouTube ↗</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2 style="margin-bottom:4px;">Tocando agora</h2>
+    <div class="titulo" id="agora-titulo-conv">—</div>
+    <div class="cantor" id="agora-cantor-conv"></div>
+  </div>
+
+  <div class="panel" style="flex:1; display:flex; flex-direction:column; min-height:0;">
+    <h2>Próximas da fila</h2>
+    <div id="fila-conv"></div>
+  </div>
+</div>
+
+<script src="https://www.youtube.com/iframe_api"></script>
+<script>
+//---------------------------------------------------------------------
+//
+// QR Code Generator for JavaScript
+//
+// Copyright (c) 2009 Kazuhiko Arase
+//
+// URL: http://www.d-project.com/
+//
+// Licensed under the MIT license:
+//  http://www.opensource.org/licenses/mit-license.php
+//
+// The word 'QR Code' is registered trademark of
+// DENSO WAVE INCORPORATED
+//  http://www.denso-wave.com/qrcode/faqpatent-e.html
+//
+//---------------------------------------------------------------------
+
+var qrcode = function() {
+
+  var qrcode = function(typeNumber, errorCorrectionLevel) {
+
+    var PAD0 = 0xEC;
+    var PAD1 = 0x11;
+
+    var _typeNumber = typeNumber;
+    var _errorCorrectionLevel = QRErrorCorrectionLevel[errorCorrectionLevel];
+    var _modules = null;
+    var _moduleCount = 0;
+    var _dataCache = null;
+    var _dataList = new Array();
+
+    var _this = {};
+
+    var makeImpl = function(test, maskPattern) {
+
+      _moduleCount = _typeNumber * 4 + 17;
+      _modules = function(moduleCount) {
+        var modules = new Array(moduleCount);
+        for (var row = 0; row < moduleCount; row += 1) {
+          modules[row] = new Array(moduleCount);
+          for (var col = 0; col < moduleCount; col += 1) {
+            modules[row][col] = null;
+          }
+        }
+        return modules;
+      }(_moduleCount);
+
+      setupPositionProbePattern(0, 0);
+      setupPositionProbePattern(_moduleCount - 7, 0);
+      setupPositionProbePattern(0, _moduleCount - 7);
+      setupPositionAdjustPattern();
+      setupTimingPattern();
+      setupTypeInfo(test, maskPattern);
+
+      if (_typeNumber >= 7) {
+        setupTypeNumber(test);
+      }
+
+      if (_dataCache == null) {
+        _dataCache = createData(_typeNumber, _errorCorrectionLevel, _dataList);
+      }
+
+      mapData(_dataCache, maskPattern);
+    };
+
+    var setupPositionProbePattern = function(row, col) {
+
+      for (var r = -1; r <= 7; r += 1) {
+
+        if (row + r <= -1 || _moduleCount <= row + r) continue;
+
+        for (var c = -1; c <= 7; c += 1) {
+
+          if (col + c <= -1 || _moduleCount <= col + c) continue;
+
+          if ( (0 <= r && r <= 6 && (c == 0 || c == 6) )
+              || (0 <= c && c <= 6 && (r == 0 || r == 6) )
+              || (2 <= r && r <= 4 && 2 <= c && c <= 4) ) {
+            _modules[row + r][col + c] = true;
+          } else {
+            _modules[row + r][col + c] = false;
+          }
+        }
+      }
+    };
+
+    var getBestMaskPattern = function() {
+
+      var minLostPoint = 0;
+      var pattern = 0;
+
+      for (var i = 0; i < 8; i += 1) {
+
+        makeImpl(true, i);
+
+        var lostPoint = QRUtil.getLostPoint(_this);
+
+        if (i == 0 || minLostPoint > lostPoint) {
+          minLostPoint = lostPoint;
+          pattern = i;
+        }
+      }
+
+      return pattern;
+    };
+
+    var setupTimingPattern = function() {
+
+      for (var r = 8; r < _moduleCount - 8; r += 1) {
+        if (_modules[r][6] != null) {
+          continue;
+        }
+        _modules[r][6] = (r % 2 == 0);
+      }
+
+      for (var c = 8; c < _moduleCount - 8; c += 1) {
+        if (_modules[6][c] != null) {
+          continue;
+        }
+        _modules[6][c] = (c % 2 == 0);
+      }
+    };
+
+    var setupPositionAdjustPattern = function() {
+
+      var pos = QRUtil.getPatternPosition(_typeNumber);
+
+      for (var i = 0; i < pos.length; i += 1) {
+
+        for (var j = 0; j < pos.length; j += 1) {
+
+          var row = pos[i];
+          var col = pos[j];
+
+          if (_modules[row][col] != null) {
+            continue;
+          }
+
+          for (var r = -2; r <= 2; r += 1) {
+
+            for (var c = -2; c <= 2; c += 1) {
+
+              if (r == -2 || r == 2 || c == -2 || c == 2
+                  || (r == 0 && c == 0) ) {
+                _modules[row + r][col + c] = true;
+              } else {
+                _modules[row + r][col + c] = false;
+              }
+            }
+          }
+        }
+      }
+    };
+
+    var setupTypeNumber = function(test) {
+
+      var bits = QRUtil.getBCHTypeNumber(_typeNumber);
+
+      for (var i = 0; i < 18; i += 1) {
+        var mod = (!test && ( (bits >> i) & 1) == 1);
+        _modules[Math.floor(i / 3)][i % 3 + _moduleCount - 8 - 3] = mod;
+      }
+
+      for (var i = 0; i < 18; i += 1) {
+        var mod = (!test && ( (bits >> i) & 1) == 1);
+        _modules[i % 3 + _moduleCount - 8 - 3][Math.floor(i / 3)] = mod;
+      }
+    };
+
+    var setupTypeInfo = function(test, maskPattern) {
+
+      var data = (_errorCorrectionLevel << 3) | maskPattern;
+      var bits = QRUtil.getBCHTypeInfo(data);
+
+      for (var i = 0; i < 15; i += 1) {
+
+        var mod = (!test && ( (bits >> i) & 1) == 1);
+
+        if (i < 6) {
+          _modules[i][8] = mod;
+        } else if (i < 8) {
+          _modules[i + 1][8] = mod;
+        } else {
+          _modules[_moduleCount - 15 + i][8] = mod;
+        }
+      }
+
+      for (var i = 0; i < 15; i += 1) {
+
+        var mod = (!test && ( (bits >> i) & 1) == 1);
+
+        if (i < 8) {
+          _modules[8][_moduleCount - i - 1] = mod;
+        } else if (i < 9) {
+          _modules[8][15 - i - 1 + 1] = mod;
+        } else {
+          _modules[8][15 - i - 1] = mod;
+        }
+      }
+
+      _modules[_moduleCount - 8][8] = (!test);
+    };
+
+    var mapData = function(data, maskPattern) {
+
+      var inc = -1;
+      var row = _moduleCount - 1;
+      var bitIndex = 7;
+      var byteIndex = 0;
+      var maskFunc = QRUtil.getMaskFunction(maskPattern);
+
+      for (var col = _moduleCount - 1; col > 0; col -= 2) {
+
+        if (col == 6) col -= 1;
+
+        while (true) {
+
+          for (var c = 0; c < 2; c += 1) {
+
+            if (_modules[row][col - c] == null) {
+
+              var dark = false;
+
+              if (byteIndex < data.length) {
+                dark = ( ( (data[byteIndex] >>> bitIndex) & 1) == 1);
+              }
+
+              var mask = maskFunc(row, col - c);
+
+              if (mask) {
+                dark = !dark;
+              }
+
+              _modules[row][col - c] = dark;
+              bitIndex -= 1;
+
+              if (bitIndex == -1) {
+                byteIndex += 1;
+                bitIndex = 7;
+              }
+            }
+          }
+
+          row += inc;
+
+          if (row < 0 || _moduleCount <= row) {
+            row -= inc;
+            inc = -inc;
+            break;
+          }
+        }
+      }
+    };
+
+    var createBytes = function(buffer, rsBlocks) {
+
+      var offset = 0;
+
+      var maxDcCount = 0;
+      var maxEcCount = 0;
+
+      var dcdata = new Array(rsBlocks.length);
+      var ecdata = new Array(rsBlocks.length);
+
+      for (var r = 0; r < rsBlocks.length; r += 1) {
+
+        var dcCount = rsBlocks[r].dataCount;
+        var ecCount = rsBlocks[r].totalCount - dcCount;
+
+        maxDcCount = Math.max(maxDcCount, dcCount);
+        maxEcCount = Math.max(maxEcCount, ecCount);
+
+        dcdata[r] = new Array(dcCount);
+
+        for (var i = 0; i < dcdata[r].length; i += 1) {
+          dcdata[r][i] = 0xff & buffer.getBuffer()[i + offset];
+        }
+        offset += dcCount;
+
+        var rsPoly = QRUtil.getErrorCorrectPolynomial(ecCount);
+        var rawPoly = qrPolynomial(dcdata[r], rsPoly.getLength() - 1);
+
+        var modPoly = rawPoly.mod(rsPoly);
+        ecdata[r] = new Array(rsPoly.getLength() - 1);
+        for (var i = 0; i < ecdata[r].length; i += 1) {
+          var modIndex = i + modPoly.getLength() - ecdata[r].length;
+          ecdata[r][i] = (modIndex >= 0)? modPoly.getAt(modIndex) : 0;
+        }
+      }
+
+      var totalCodeCount = 0;
+      for (var i = 0; i < rsBlocks.length; i += 1) {
+        totalCodeCount += rsBlocks[i].totalCount;
+      }
+
+      var data = new Array(totalCodeCount);
+      var index = 0;
+
+      for (var i = 0; i < maxDcCount; i += 1) {
+        for (var r = 0; r < rsBlocks.length; r += 1) {
+          if (i < dcdata[r].length) {
+            data[index] = dcdata[r][i];
+            index += 1;
+          }
+        }
+      }
+
+      for (var i = 0; i < maxEcCount; i += 1) {
+        for (var r = 0; r < rsBlocks.length; r += 1) {
+          if (i < ecdata[r].length) {
+            data[index] = ecdata[r][i];
+            index += 1;
+          }
+        }
+      }
+
+      return data;
+    };
+
+    var createData = function(typeNumber, errorCorrectionLevel, dataList) {
+
+      var rsBlocks = QRRSBlock.getRSBlocks(typeNumber, errorCorrectionLevel);
+
+      var buffer = qrBitBuffer();
+
+      for (var i = 0; i < dataList.length; i += 1) {
+        var data = dataList[i];
+        buffer.put(data.getMode(), 4);
+        buffer.put(data.getLength(), QRUtil.getLengthInBits(data.getMode(), typeNumber) );
+        data.write(buffer);
+      }
+
+      var totalDataCount = 0;
+      for (var i = 0; i < rsBlocks.length; i += 1) {
+        totalDataCount += rsBlocks[i].dataCount;
+      }
+
+      if (buffer.getLengthInBits() > totalDataCount * 8) {
+        throw new Error('code length overflow. ('
+          + buffer.getLengthInBits()
+          + '>'
+          + totalDataCount * 8
+          + ')');
+      }
+
+      if (buffer.getLengthInBits() + 4 <= totalDataCount * 8) {
+        buffer.put(0, 4);
+      }
+
+      while (buffer.getLengthInBits() % 8 != 0) {
+        buffer.putBit(false);
+      }
+
+      while (true) {
+
+        if (buffer.getLengthInBits() >= totalDataCount * 8) {
+          break;
+        }
+        buffer.put(PAD0, 8);
+
+        if (buffer.getLengthInBits() >= totalDataCount * 8) {
+          break;
+        }
+        buffer.put(PAD1, 8);
+      }
+
+      return createBytes(buffer, rsBlocks);
+    };
+
+    _this.addData = function(data, mode) {
+
+      mode = mode || 'Byte';
+
+      var newData = null;
+
+      switch(mode) {
+      case 'Numeric' :
+        newData = qrNumber(data);
+        break;
+      case 'Alphanumeric' :
+        newData = qrAlphaNum(data);
+        break;
+      case 'Byte' :
+        newData = qr8BitByte(data);
+        break;
+      case 'Kanji' :
+        newData = qrKanji(data);
+        break;
+      default :
+        throw 'mode:' + mode;
+      }
+
+      _dataList.push(newData);
+      _dataCache = null;
+    };
+
+    _this.isDark = function(row, col) {
+      if (row < 0 || _moduleCount <= row || col < 0 || _moduleCount <= col) {
+        throw new Error(row + ',' + col);
+      }
+      return _modules[row][col];
+    };
+
+    _this.getModuleCount = function() {
+      return _moduleCount;
+    };
+
+    _this.make = function() {
+      makeImpl(false, getBestMaskPattern() );
+    };
+
+    _this.createTableTag = function(cellSize, margin) {
+
+      cellSize = cellSize || 2;
+      margin = (typeof margin == 'undefined')? cellSize * 4 : margin;
+
+      var qrHtml = '';
+
+      qrHtml += '<table style="';
+      qrHtml += ' border-width: 0px; border-style: none;';
+      qrHtml += ' border-collapse: collapse;';
+      qrHtml += ' padding: 0px; margin: ' + margin + 'px;';
+      qrHtml += '">';
+      qrHtml += '<tbody>';
+
+      for (var r = 0; r < _this.getModuleCount(); r += 1) {
+
+        qrHtml += '<tr>';
+
+        for (var c = 0; c < _this.getModuleCount(); c += 1) {
+          qrHtml += '<td style="';
+          qrHtml += ' border-width: 0px; border-style: none;';
+          qrHtml += ' border-collapse: collapse;';
+          qrHtml += ' padding: 0px; margin: 0px;';
+          qrHtml += ' width: ' + cellSize + 'px;';
+          qrHtml += ' height: ' + cellSize + 'px;';
+          qrHtml += ' background-color: ';
+          qrHtml += _this.isDark(r, c)? '#000000' : '#ffffff';
+          qrHtml += ';';
+          qrHtml += '"/>';
+        }
+
+        qrHtml += '</tr>';
+      }
+
+      qrHtml += '</tbody>';
+      qrHtml += '</table>';
+
+      return qrHtml;
+    };
+
+    _this.createSvgTag = function(cellSize, margin) {
+
+      cellSize = cellSize || 2;
+      margin = (typeof margin == 'undefined')? cellSize * 4 : margin;
+      var size = _this.getModuleCount() * cellSize + margin * 2;
+      var c, mc, r, mr, qrSvg='', rect;
+
+      rect = 'l' + cellSize + ',0 0,' + cellSize +
+        ' -' + cellSize + ',0 0,-' + cellSize + 'z ';
+
+      qrSvg += '<svg';
+      qrSvg += ' width="' + size + 'px"';
+      qrSvg += ' height="' + size + 'px"';
+      qrSvg += ' xmlns="http://www.w3.org/2000/svg"';
+      qrSvg += '>';
+      qrSvg += '<rect width="100%" height="100%" fill="white"/>';
+      qrSvg += '<path d="';
+
+      for (r = 0; r < _this.getModuleCount(); r += 1) {
+        mr = r * cellSize + margin;
+        for (c = 0; c < _this.getModuleCount(); c += 1) {
+          if (_this.isDark(r, c) ) {
+            mc = c*cellSize+margin;
+            qrSvg += 'M' + mc + ',' + mr + rect;
+          }
+        }
+      }
+
+      qrSvg += '" stroke="transparent" fill="black"/>';
+      qrSvg += '</svg>';
+
+      return qrSvg;
+    };
+
+    return _this;
+  };
+
+  qrcode.stringToBytes = function(s) {
+    var bytes = new Array();
+    for (var i = 0; i < s.length; i += 1) {
+      var c = s.charCodeAt(i);
+      bytes.push(c & 0xff);
+    }
+    return bytes;
+  };
+
+  var QRMode = {
+    MODE_NUMBER :    1 << 0,
+    MODE_ALPHA_NUM : 1 << 1,
+    MODE_8BIT_BYTE : 1 << 2,
+    MODE_KANJI :     1 << 3
+  };
+
+  var QRErrorCorrectionLevel = {
+    L : 1,
+    M : 0,
+    Q : 3,
+    H : 2
+  };
+
+  var QRMaskPattern = {
+    PATTERN000 : 0,
+    PATTERN001 : 1,
+    PATTERN010 : 2,
+    PATTERN011 : 3,
+    PATTERN100 : 4,
+    PATTERN101 : 5,
+    PATTERN110 : 6,
+    PATTERN111 : 7
+  };
+
+  var QRUtil = function() {
+
+    var PATTERN_POSITION_TABLE = [
+      [],
+      [6, 18],
+      [6, 22],
+      [6, 26],
+      [6, 30],
+      [6, 34],
+      [6, 22, 38],
+      [6, 24, 42],
+      [6, 26, 46],
+      [6, 28, 50],
+      [6, 30, 54],
+      [6, 32, 58],
+      [6, 34, 62],
+      [6, 26, 46, 66],
+      [6, 26, 48, 70],
+      [6, 26, 50, 74],
+      [6, 30, 54, 78],
+      [6, 30, 56, 82],
+      [6, 30, 58, 86],
+      [6, 34, 62, 90],
+      [6, 28, 50, 72, 94],
+      [6, 26, 50, 74, 98],
+      [6, 30, 54, 78, 102],
+      [6, 28, 54, 80, 106],
+      [6, 32, 58, 84, 110],
+      [6, 30, 58, 86, 114],
+      [6, 34, 62, 90, 118],
+      [6, 26, 50, 74, 98, 122],
+      [6, 30, 54, 78, 102, 126],
+      [6, 26, 52, 78, 104, 130],
+      [6, 30, 56, 82, 108, 134],
+      [6, 34, 60, 86, 112, 138],
+      [6, 30, 58, 86, 114, 142],
+      [6, 34, 62, 90, 118, 146],
+      [6, 30, 54, 78, 102, 126, 150],
+      [6, 24, 50, 76, 102, 128, 154],
+      [6, 28, 54, 80, 106, 132, 158],
+      [6, 32, 58, 84, 110, 136, 162],
+      [6, 26, 54, 82, 110, 138, 166],
+      [6, 30, 58, 86, 114, 142, 170]
+    ];
+    var G15 = (1 << 10) | (1 << 8) | (1 << 5) | (1 << 4) | (1 << 2) | (1 << 1) | (1 << 0);
+    var G18 = (1 << 12) | (1 << 11) | (1 << 10) | (1 << 9) | (1 << 8) | (1 << 5) | (1 << 2) | (1 << 0);
+    var G15_MASK = (1 << 14) | (1 << 12) | (1 << 10) | (1 << 4) | (1 << 1);
+
+    var _this = {};
+
+    var getBCHDigit = function(data) {
+      var digit = 0;
+      while (data != 0) {
+        digit += 1;
+        data >>>= 1;
+      }
+      return digit;
+    };
+
+    _this.getBCHTypeInfo = function(data) {
+      var d = data << 10;
+      while (getBCHDigit(d) - getBCHDigit(G15) >= 0) {
+        d ^= (G15 << (getBCHDigit(d) - getBCHDigit(G15) ) );
+      }
+      return ( (data << 10) | d) ^ G15_MASK;
+    };
+
+    _this.getBCHTypeNumber = function(data) {
+      var d = data << 12;
+      while (getBCHDigit(d) - getBCHDigit(G18) >= 0) {
+        d ^= (G18 << (getBCHDigit(d) - getBCHDigit(G18) ) );
+      }
+      return (data << 12) | d;
+    };
+
+    _this.getPatternPosition = function(typeNumber) {
+      return PATTERN_POSITION_TABLE[typeNumber - 1];
+    };
+
+    _this.getMaskFunction = function(maskPattern) {
+
+      switch (maskPattern) {
+
+      case QRMaskPattern.PATTERN000 :
+        return function(i, j) { return (i + j) % 2 == 0; };
+      case QRMaskPattern.PATTERN001 :
+        return function(i, j) { return i % 2 == 0; };
+      case QRMaskPattern.PATTERN010 :
+        return function(i, j) { return j % 3 == 0; };
+      case QRMaskPattern.PATTERN011 :
+        return function(i, j) { return (i + j) % 3 == 0; };
+      case QRMaskPattern.PATTERN100 :
+        return function(i, j) { return (Math.floor(i / 2) + Math.floor(j / 3) ) % 2 == 0; };
+      case QRMaskPattern.PATTERN101 :
+        return function(i, j) { return (i * j) % 2 + (i * j) % 3 == 0; };
+      case QRMaskPattern.PATTERN110 :
+        return function(i, j) { return ( (i * j) % 2 + (i * j) % 3) % 2 == 0; };
+      case QRMaskPattern.PATTERN111 :
+        return function(i, j) { return ( (i * j) % 3 + (i + j) % 2) % 2 == 0; };
+
+      default :
+        throw new Error('bad maskPattern:' + maskPattern);
+      }
+    };
+
+    _this.getErrorCorrectPolynomial = function(errorCorrectLength) {
+      var a = qrPolynomial([1], 0);
+      for (var i = 0; i < errorCorrectLength; i += 1) {
+        a = a.multiply(qrPolynomial([1, QRMath.gexp(i)], 0) );
+      }
+      return a;
+    };
+
+    _this.getLengthInBits = function(mode, type) {
+
+      if (1 <= type && type < 10) {
+
+        switch(mode) {
+        case QRMode.MODE_NUMBER    : return 10;
+        case QRMode.MODE_ALPHA_NUM : return 9;
+        case QRMode.MODE_8BIT_BYTE : return 8;
+        case QRMode.MODE_KANJI     : return 8;
+        default :
+          throw new Error('mode:' + mode);
+        }
+
+      } else if (type < 27) {
+
+        switch(mode) {
+        case QRMode.MODE_NUMBER    : return 12;
+        case QRMode.MODE_ALPHA_NUM : return 11;
+        case QRMode.MODE_8BIT_BYTE : return 16;
+        case QRMode.MODE_KANJI     : return 10;
+        default :
+          throw new Error('mode:' + mode);
+        }
+
+      } else if (type < 41) {
+
+        switch(mode) {
+        case QRMode.MODE_NUMBER    : return 14;
+        case QRMode.MODE_ALPHA_NUM : return 13;
+        case QRMode.MODE_8BIT_BYTE : return 16;
+        case QRMode.MODE_KANJI     : return 12;
+        default :
+          throw new Error('mode:' + mode);
+        }
+
+      } else {
+        throw new Error('type:' + type);
+      }
+    };
+
+    _this.getLostPoint = function(qrcode) {
+
+      var moduleCount = qrcode.getModuleCount();
+
+      var lostPoint = 0;
+
+      for (var row = 0; row < moduleCount; row += 1) {
+        for (var col = 0; col < moduleCount; col += 1) {
+
+          var sameCount = 0;
+          var dark = qrcode.isDark(row, col);
+
+          for (var r = -1; r <= 1; r += 1) {
+
+            if (row + r < 0 || moduleCount <= row + r) {
+              continue;
+            }
+
+            for (var c = -1; c <= 1; c += 1) {
+
+              if (col + c < 0 || moduleCount <= col + c) {
+                continue;
+              }
+
+              if (r == 0 && c == 0) {
+                continue;
+              }
+
+              if (dark == qrcode.isDark(row + r, col + c) ) {
+                sameCount += 1;
+              }
+            }
+          }
+
+          if (sameCount > 5) {
+            lostPoint += (3 + sameCount - 5);
+          }
+        }
+      };
+
+      for (var row = 0; row < moduleCount - 1; row += 1) {
+        for (var col = 0; col < moduleCount - 1; col += 1) {
+          var count = 0;
+          if (qrcode.isDark(row, col) ) count += 1;
+          if (qrcode.isDark(row + 1, col) ) count += 1;
+          if (qrcode.isDark(row, col + 1) ) count += 1;
+          if (qrcode.isDark(row + 1, col + 1) ) count += 1;
+          if (count == 0 || count == 4) {
+            lostPoint += 3;
+          }
+        }
+      }
+
+      for (var row = 0; row < moduleCount; row += 1) {
+        for (var col = 0; col < moduleCount - 6; col += 1) {
+          if (qrcode.isDark(row, col)
+              && !qrcode.isDark(row, col + 1)
+              &&  qrcode.isDark(row, col + 2)
+              &&  qrcode.isDark(row, col + 3)
+              &&  qrcode.isDark(row, col + 4)
+              && !qrcode.isDark(row, col + 5)
+              &&  qrcode.isDark(row, col + 6) ) {
+            lostPoint += 40;
+          }
+        }
+      }
+
+      for (var col = 0; col < moduleCount; col += 1) {
+        for (var row = 0; row < moduleCount - 6; row += 1) {
+          if (qrcode.isDark(row, col)
+              && !qrcode.isDark(row + 1, col)
+              &&  qrcode.isDark(row + 2, col)
+              &&  qrcode.isDark(row + 3, col)
+              &&  qrcode.isDark(row + 4, col)
+              && !qrcode.isDark(row + 5, col)
+              &&  qrcode.isDark(row + 6, col) ) {
+            lostPoint += 40;
+          }
+        }
+      }
+
+      var darkCount = 0;
+
+      for (var col = 0; col < moduleCount; col += 1) {
+        for (var row = 0; row < moduleCount; row += 1) {
+          if (qrcode.isDark(row, col) ) {
+            darkCount += 1;
+          }
+        }
+      }
+
+      var ratio = Math.abs(100 * darkCount / moduleCount / moduleCount - 50) / 5;
+      lostPoint += ratio * 10;
+
+      return lostPoint;
+    };
+
+    return _this;
+  }();
+
+  var QRMath = function() {
+
+    var EXP_TABLE = new Array(256);
+    var LOG_TABLE = new Array(256);
+
+    for (var i = 0; i < 8; i += 1) {
+      EXP_TABLE[i] = 1 << i;
+    }
+    for (var i = 8; i < 256; i += 1) {
+      EXP_TABLE[i] = EXP_TABLE[i - 4]
+        ^ EXP_TABLE[i - 5]
+        ^ EXP_TABLE[i - 6]
+        ^ EXP_TABLE[i - 8];
+    }
+    for (var i = 0; i < 255; i += 1) {
+      LOG_TABLE[EXP_TABLE[i] ] = i;
+    }
+
+    var _this = {};
+
+    _this.glog = function(n) {
+
+      if (n < 1) {
+        throw new Error('glog(' + n + ')');
+      }
+
+      return LOG_TABLE[n];
+    };
+
+    _this.gexp = function(n) {
+
+      while (n < 0) {
+        n += 255;
+      }
+
+      while (n >= 256) {
+        n -= 255;
+      }
+
+      return EXP_TABLE[n];
+    };
+
+    return _this;
+  }();
+
+  function qrPolynomial(num, shift) {
+
+    if (typeof num.length == 'undefined') {
+      throw new Error(num.length + '/' + shift);
+    }
+
+    var _num = function() {
+      var offset = 0;
+      while (offset < num.length && num[offset] == 0) {
+        offset += 1;
+      }
+      var _num = new Array(num.length - offset + shift);
+      for (var i = 0; i < num.length - offset; i += 1) {
+        _num[i] = num[i + offset];
+      }
+      return _num;
+    }();
+
+    var _this = {};
+
+    _this.getAt = function(index) {
+      return _num[index];
+    };
+
+    _this.getLength = function() {
+      return _num.length;
+    };
+
+    _this.multiply = function(e) {
+
+      var num = new Array(_this.getLength() + e.getLength() - 1);
+
+      for (var i = 0; i < _this.getLength(); i += 1) {
+        for (var j = 0; j < e.getLength(); j += 1) {
+          num[i + j] ^= QRMath.gexp(QRMath.glog(_this.getAt(i) ) + QRMath.glog(e.getAt(j) ) );
+        }
+      }
+
+      return qrPolynomial(num, 0);
+    };
+
+    _this.mod = function(e) {
+
+      if (_this.getLength() - e.getLength() < 0) {
+        return _this;
+      }
+
+      var ratio = QRMath.glog(_this.getAt(0) ) - QRMath.glog(e.getAt(0) );
+
+      var num = new Array(_this.getLength() );
+      for (var i = 0; i < _this.getLength(); i += 1) {
+        num[i] = _this.getAt(i);
+      }
+
+      for (var i = 0; i < e.getLength(); i += 1) {
+        num[i] ^= QRMath.gexp(QRMath.glog(e.getAt(i) ) + ratio);
+      }
+
+      return qrPolynomial(num, 0).mod(e);
+    };
+
+    return _this;
+  };
+
+  var QRRSBlock = function() {
+
+    var RS_BLOCK_TABLE = [
+      [1, 26, 19],
+      [1, 26, 16],
+      [1, 26, 13],
+      [1, 26, 9],
+      [1, 44, 34],
+      [1, 44, 28],
+      [1, 44, 22],
+      [1, 44, 16],
+      [1, 70, 55],
+      [1, 70, 44],
+      [2, 35, 17],
+      [2, 35, 13],
+      [1, 100, 80],
+      [2, 50, 32],
+      [2, 50, 24],
+      [4, 25, 9],
+      [1, 134, 108],
+      [2, 67, 43],
+      [2, 33, 15, 2, 34, 16],
+      [2, 33, 11, 2, 34, 12],
+      [2, 86, 68],
+      [4, 43, 27],
+      [4, 43, 19],
+      [4, 43, 15],
+      [2, 98, 78],
+      [4, 49, 31],
+      [2, 32, 14, 4, 33, 15],
+      [4, 39, 13, 1, 40, 14],
+      [2, 121, 97],
+      [2, 60, 38, 2, 61, 39],
+      [4, 40, 18, 2, 41, 19],
+      [4, 40, 14, 2, 41, 15],
+      [2, 146, 116],
+      [3, 58, 36, 2, 59, 37],
+      [4, 36, 16, 4, 37, 17],
+      [4, 36, 12, 4, 37, 13],
+      [2, 86, 68, 2, 87, 69],
+      [4, 69, 43, 1, 70, 44],
+      [6, 43, 19, 2, 44, 20],
+      [6, 43, 15, 2, 44, 16],
+      [4, 101, 81],
+      [1, 80, 50, 4, 81, 51],
+      [4, 50, 22, 4, 51, 23],
+      [3, 36, 12, 8, 37, 13],
+      [2, 116, 92, 2, 117, 93],
+      [6, 58, 36, 2, 59, 37],
+      [4, 46, 20, 6, 47, 21],
+      [7, 42, 14, 4, 43, 15],
+      [4, 133, 107],
+      [8, 59, 37, 1, 60, 38],
+      [8, 44, 20, 4, 45, 21],
+      [12, 33, 11, 4, 34, 12],
+      [3, 145, 115, 1, 146, 116],
+      [4, 64, 40, 5, 65, 41],
+      [11, 36, 16, 5, 37, 17],
+      [11, 36, 12, 5, 37, 13],
+      [5, 109, 87, 1, 110, 88],
+      [5, 65, 41, 5, 66, 42],
+      [5, 54, 24, 7, 55, 25],
+      [11, 36, 12, 7, 37, 13],
+      [5, 122, 98, 1, 123, 99],
+      [7, 73, 45, 3, 74, 46],
+      [15, 43, 19, 2, 44, 20],
+      [3, 45, 15, 13, 46, 16],
+      [1, 135, 107, 5, 136, 108],
+      [10, 74, 46, 1, 75, 47],
+      [1, 50, 22, 15, 51, 23],
+      [2, 42, 14, 17, 43, 15],
+      [5, 150, 120, 1, 151, 121],
+      [9, 69, 43, 4, 70, 44],
+      [17, 50, 22, 1, 51, 23],
+      [2, 42, 14, 19, 43, 15],
+      [3, 141, 113, 4, 142, 114],
+      [3, 70, 44, 11, 71, 45],
+      [17, 47, 21, 4, 48, 22],
+      [9, 39, 13, 16, 40, 14],
+      [3, 135, 107, 5, 136, 108],
+      [3, 67, 41, 13, 68, 42],
+      [15, 54, 24, 5, 55, 25],
+      [15, 43, 15, 10, 44, 16],
+      [4, 144, 116, 4, 145, 117],
+      [17, 68, 42],
+      [17, 50, 22, 6, 51, 23],
+      [19, 46, 16, 6, 47, 17],
+      [2, 139, 111, 7, 140, 112],
+      [17, 74, 46],
+      [7, 54, 24, 16, 55, 25],
+      [34, 37, 13],
+      [4, 151, 121, 5, 152, 122],
+      [4, 75, 47, 14, 76, 48],
+      [11, 54, 24, 14, 55, 25],
+      [16, 45, 15, 14, 46, 16],
+      [6, 147, 117, 4, 148, 118],
+      [6, 73, 45, 14, 74, 46],
+      [11, 54, 24, 16, 55, 25],
+      [30, 46, 16, 2, 47, 17],
+      [8, 132, 106, 4, 133, 107],
+      [8, 75, 47, 13, 76, 48],
+      [7, 54, 24, 22, 55, 25],
+      [22, 45, 15, 13, 46, 16],
+      [10, 142, 114, 2, 143, 115],
+      [19, 74, 46, 4, 75, 47],
+      [28, 50, 22, 6, 51, 23],
+      [33, 46, 16, 4, 47, 17],
+      [8, 152, 122, 4, 153, 123],
+      [22, 73, 45, 3, 74, 46],
+      [8, 53, 23, 26, 54, 24],
+      [12, 45, 15, 28, 46, 16],
+      [3, 147, 117, 10, 148, 118],
+      [3, 73, 45, 23, 74, 46],
+      [4, 54, 24, 31, 55, 25],
+      [11, 45, 15, 31, 46, 16],
+      [7, 146, 116, 7, 147, 117],
+      [21, 73, 45, 7, 74, 46],
+      [1, 53, 23, 37, 54, 24],
+      [19, 45, 15, 26, 46, 16],
+      [5, 145, 115, 10, 146, 116],
+      [19, 75, 47, 10, 76, 48],
+      [15, 54, 24, 25, 55, 25],
+      [23, 45, 15, 25, 46, 16],
+      [13, 145, 115, 3, 146, 116],
+      [2, 74, 46, 29, 75, 47],
+      [42, 54, 24, 1, 55, 25],
+      [23, 45, 15, 28, 46, 16],
+      [17, 145, 115],
+      [10, 74, 46, 23, 75, 47],
+      [10, 54, 24, 35, 55, 25],
+      [19, 45, 15, 35, 46, 16],
+      [17, 145, 115, 1, 146, 116],
+      [14, 74, 46, 21, 75, 47],
+      [29, 54, 24, 19, 55, 25],
+      [11, 45, 15, 46, 46, 16],
+      [13, 145, 115, 6, 146, 116],
+      [14, 74, 46, 23, 75, 47],
+      [44, 54, 24, 7, 55, 25],
+      [59, 46, 16, 1, 47, 17],
+      [12, 151, 121, 7, 152, 122],
+      [12, 75, 47, 26, 76, 48],
+      [39, 54, 24, 14, 55, 25],
+      [22, 45, 15, 41, 46, 16],
+      [6, 151, 121, 14, 152, 122],
+      [6, 75, 47, 34, 76, 48],
+      [46, 54, 24, 10, 55, 25],
+      [2, 45, 15, 64, 46, 16],
+      [17, 152, 122, 4, 153, 123],
+      [29, 74, 46, 14, 75, 47],
+      [49, 54, 24, 10, 55, 25],
+      [24, 45, 15, 46, 46, 16],
+      [4, 152, 122, 18, 153, 123],
+      [13, 74, 46, 32, 75, 47],
+      [48, 54, 24, 14, 55, 25],
+      [42, 45, 15, 32, 46, 16],
+      [20, 147, 117, 4, 148, 118],
+      [40, 75, 47, 7, 76, 48],
+      [43, 54, 24, 22, 55, 25],
+      [10, 45, 15, 67, 46, 16],
+      [19, 148, 118, 6, 149, 119],
+      [18, 75, 47, 31, 76, 48],
+      [34, 54, 24, 34, 55, 25],
+      [20, 45, 15, 61, 46, 16]
+    ];
+
+    var qrRSBlock = function(totalCount, dataCount) {
+      var _this = {};
+      _this.totalCount = totalCount;
+      _this.dataCount = dataCount;
+      return _this;
+    };
+
+    var _this = {};
+
+    var getRsBlockTable = function(typeNumber, errorCorrectionLevel) {
+
+      switch(errorCorrectionLevel) {
+      case QRErrorCorrectionLevel.L :
+        return RS_BLOCK_TABLE[(typeNumber - 1) * 4 + 0];
+      case QRErrorCorrectionLevel.M :
+        return RS_BLOCK_TABLE[(typeNumber - 1) * 4 + 1];
+      case QRErrorCorrectionLevel.Q :
+        return RS_BLOCK_TABLE[(typeNumber - 1) * 4 + 2];
+      case QRErrorCorrectionLevel.H :
+        return RS_BLOCK_TABLE[(typeNumber - 1) * 4 + 3];
+      default :
+        return undefined;
+      }
+    };
+
+    _this.getRSBlocks = function(typeNumber, errorCorrectionLevel) {
+
+      var rsBlock = getRsBlockTable(typeNumber, errorCorrectionLevel);
+
+      if (typeof rsBlock == 'undefined') {
+        throw new Error('bad rs block @ typeNumber:' + typeNumber +
+            '/errorCorrectionLevel:' + errorCorrectionLevel);
+      }
+
+      var length = rsBlock.length / 3;
+
+      var list = new Array();
+
+      for (var i = 0; i < length; i += 1) {
+
+        var count = rsBlock[i * 3 + 0];
+        var totalCount = rsBlock[i * 3 + 1];
+        var dataCount = rsBlock[i * 3 + 2];
+
+        for (var j = 0; j < count; j += 1) {
+          list.push(qrRSBlock(totalCount, dataCount) );
+        }
+      }
+
+      return list;
+    };
+
+    return _this;
+  }();
+
+  var qrBitBuffer = function() {
+
+    var _buffer = new Array();
+    var _length = 0;
+
+    var _this = {};
+
+    _this.getBuffer = function() {
+      return _buffer;
+    };
+
+    _this.getAt = function(index) {
+      var bufIndex = Math.floor(index / 8);
+      return ( (_buffer[bufIndex] >>> (7 - index % 8) ) & 1) == 1;
+    };
+
+    _this.put = function(num, length) {
+      for (var i = 0; i < length; i += 1) {
+        _this.putBit( ( (num >>> (length - i - 1) ) & 1) == 1);
+      }
+    };
+
+    _this.getLengthInBits = function() {
+      return _length;
+    };
+
+    _this.putBit = function(bit) {
+
+      var bufIndex = Math.floor(_length / 8);
+      if (_buffer.length <= bufIndex) {
+        _buffer.push(0);
+      }
+
+      if (bit) {
+        _buffer[bufIndex] |= (0x80 >>> (_length % 8) );
+      }
+
+      _length += 1;
+    };
+
+    return _this;
+  };
+
+  var qrNumber = function(data) {
+
+    var _mode = QRMode.MODE_NUMBER;
+    var _data = data;
+
+    var _this = {};
+
+    _this.getMode = function() {
+      return _mode;
+    };
+
+    _this.getLength = function(buffer) {
+      return _data.length;
+    };
+
+    _this.write = function(buffer) {
+
+      var data = _data;
+
+      var i = 0;
+
+      while (i + 2 < data.length) {
+        buffer.put(strToNum(data.substring(i, i + 3) ), 10);
+        i += 3;
+      }
+
+      if (i < data.length) {
+        if (data.length - i == 1) {
+          buffer.put(strToNum(data.substring(i, i + 1) ), 4);
+        } else if (data.length - i == 2) {
+          buffer.put(strToNum(data.substring(i, i + 2) ), 7);
+        }
+      }
+    };
+
+    var strToNum = function(s) {
+      var num = 0;
+      for (var i = 0; i < s.length; i += 1) {
+        num = num * 10 + chatToNum(s.charAt(i) );
+      }
+      return num;
+    };
+
+    var chatToNum = function(c) {
+      if ('0' <= c && c <= '9') {
+        return c.charCodeAt(0) - '0'.charCodeAt(0);
+      }
+      throw 'illegal char :' + c;
+    };
+
+    return _this;
+  };
+
+  var qrAlphaNum = function(data) {
+
+    var _mode = QRMode.MODE_ALPHA_NUM;
+    var _data = data;
+
+    var _this = {};
+
+    _this.getMode = function() {
+      return _mode;
+    };
+
+    _this.getLength = function(buffer) {
+      return _data.length;
+    };
+
+    _this.write = function(buffer) {
+
+      var s = _data;
+
+      var i = 0;
+
+      while (i + 1 < s.length) {
+        buffer.put(
+          getCode(s.charAt(i) ) * 45 +
+          getCode(s.charAt(i + 1) ), 11);
+        i += 2;
+      }
+
+      if (i < s.length) {
+        buffer.put(getCode(s.charAt(i) ), 6);
+      }
+    };
+
+    var getCode = function(c) {
+
+      if ('0' <= c && c <= '9') {
+        return c.charCodeAt(0) - '0'.charCodeAt(0);
+      } else if ('A' <= c && c <= 'Z') {
+        return c.charCodeAt(0) - 'A'.charCodeAt(0) + 10;
+      } else {
+        switch (c) {
+        case ' ' : return 36;
+        case '$' : return 37;
+        case '%' : return 38;
+        case '*' : return 39;
+        case '+' : return 40;
+        case '-' : return 41;
+        case '.' : return 42;
+        case '/' : return 43;
+        case ':' : return 44;
+        default :
+          throw 'illegal char :' + c;
+        }
+      }
+    };
+
+    return _this;
+  };
+
+  var qr8BitByte = function(data) {
+
+    var _mode = QRMode.MODE_8BIT_BYTE;
+    var _data = data;
+    var _bytes = qrcode.stringToBytes(data);
+
+    var _this = {};
+
+    _this.getMode = function() {
+      return _mode;
+    };
+
+    _this.getLength = function(buffer) {
+      return _bytes.length;
+    };
+
+    _this.write = function(buffer) {
+      for (var i = 0; i < _bytes.length; i += 1) {
+        buffer.put(_bytes[i], 8);
+      }
+    };
+
+    return _this;
+  };
+
+  var qrKanji = function(data) {
+
+    var _mode = QRMode.MODE_KANJI;
+    var _data = data;
+    var _bytes = qrcode.stringToBytes(data);
+
+    var _this = {};
+
+    _this.getMode = function() {
+      return _mode;
+    };
+
+    _this.getLength = function(buffer) {
+      return ~~(_bytes.length / 2);
+    };
+
+    _this.write = function(buffer) {
+
+      var data = _bytes;
+
+      var i = 0;
+
+      while (i + 1 < data.length) {
+
+        var c = ( (0xff & data[i]) << 8) | (0xff & data[i + 1]);
+
+        if (0x8140 <= c && c <= 0x9FFC) {
+          c -= 0x8140;
+        } else if (0xE040 <= c && c <= 0xEBBF) {
+          c -= 0xC140;
+        } else {
+          throw 'illegal char at ' + (i + 1) + '/' + c;
+        }
+
+        c = ( (c >>> 8) & 0xff) * 0xC0 + (c & 0xff);
+
+        buffer.put(c, 13);
+
+        i += 2;
+      }
+
+      if (i < data.length) {
+        throw 'illegal char at ' + (i + 1);
+      }
+    };
+
+    return _this;
+  };
+
+  return qrcode;
+}();
+
+</script>
+<script>
+let qrInstance = null;
+const IP_STORAGE_KEY = 'karaokeUltimoIP';
+
+async function fetchState(){
+  try{
+    const r = await fetch('/api/state', {cache:'no-store'});
+    if(!r.ok) throw new Error('status ' + r.status);
+    return await r.json();
+  }catch(e){
+    console.error('Falha ao buscar a fila do servidor:', e);
+    return {queue:[], current:null};
+  }
+}
+
+async function apiAdd(item){
+  const r = await fetch('/api/queue/add', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(item)
+  });
+  return await r.json();
+}
+
+async function apiAdvance(){
+  const r = await fetch('/api/queue/advance', {method:'POST'});
+  return await r.json();
+}
+
+async function apiRemove(index){
+  const r = await fetch('/api/queue/remove', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({index})
+  });
+  return await r.json();
+}
+
+async function apiMove(index, direction){
+  const r = await fetch('/api/queue/move', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({index, direction})
+  });
+  return await r.json();
+}
+
+function getNomeArquivo(){
+  // window.location.pathname pode vir como o caminho completo do disco se o arquivo
+  // for aberto com duplo clique (file://) em vez de pelo servidor — aqui pegamos só
+  // o nome do arquivo, pra montar links que funcionem em qualquer um dos dois casos.
+  const partes = window.location.pathname.split('/');
+  return partes[partes.length - 1] || 'karaoke.html';
+}
+
+async function fetchYouTubeTitle(id){
+  try{
+    const url = 'https://www.youtube.com/oembed?url=' +
+      encodeURIComponent('https://www.youtube.com/watch?v=' + id) + '&format=json';
+    const r = await fetch(url);
+    if(!r.ok) return null;
+    const data = await r.json();
+    return data.title || null;
+  }catch(e){
+    return null; // sem internet, video privado/removido, etc. — segue com um texto padrão
+  }
+}
+
+function extractYouTubeId(url){
+  const patterns = [
+    /(?:youtu\.be\/)([A-Za-z0-9_-]{11})/,
+    /(?:v=)([A-Za-z0-9_-]{11})/,
+    /(?:shorts\/)([A-Za-z0-9_-]{11})/,
+    /(?:embed\/)([A-Za-z0-9_-]{11})/
+  ];
+  for(const p of patterns){
+    const m = url.match(p);
+    if(m) return m[1];
+  }
+  if(/^[A-Za-z0-9_-]{11}$/.test(url.trim())) return url.trim();
+  return null;
+}
+
+const params = new URLSearchParams(window.location.search);
+const view = params.get('view');
+
+if(window.location.protocol === 'file:'){
+  const aviso = document.createElement('div');
+  aviso.style.cssText = 'position:fixed; top:0; left:0; right:0; z-index:9999; background:#FF2E88; color:#fff; ' +
+    'font-family:Inter,sans-serif; font-weight:600; font-size:14px; padding:14px 20px; text-align:center;';
+  aviso.textContent = '⚠️ Você abriu o arquivo direto (duplo clique) — a fila NÃO vai sincronizar assim. ' +
+    'Rode "python3 server.py" no Terminal e abra http://localhost:8000/karaoke.html';
+  document.body.prepend(aviso);
+}
+
+if(view === 'palco'){
+  document.getElementById('chooser').classList.add('hidden');
+  document.getElementById('palco').classList.remove('hidden');
+  initPalco();
+}else if(view === 'controle'){
+  document.getElementById('chooser').classList.add('hidden');
+  document.getElementById('controle').classList.remove('hidden');
+  initControle();
+}else if(view === 'convidado'){
+  document.getElementById('chooser').classList.add('hidden');
+  document.getElementById('convidado').classList.remove('hidden');
+  initConvidado();
+}else{
+  initChooser();
+}
+
+/* ================= TELA INICIAL (escolher IP + view) ================= */
+function pareceEnderecoDeRedeLocal(host){
+  if(!host) return true;
+  if(host === 'localhost' || host === '127.0.0.1') return true;
+  if(/^192\.168\./.test(host)) return true;
+  if(/^10\./.test(host)) return true;
+  if(/^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(host)) return true;
+  return false;
+}
+
+function initChooser(){
+  const ipInput = document.getElementById('chooser-ip');
+  const portaInput = document.getElementById('chooser-porta');
+  const currentHost = window.location.hostname;
+  const ehRedeLocal = pareceEnderecoDeRedeLocal(currentHost);
+
+  if(!ehRedeLocal){
+    // Hospedado na internet (ex: Render) — nao existe "IP da rede" pra digitar,
+    // o proprio endereco atual ja e o link certo pra todo mundo.
+    document.querySelector('.chooser-ip-panel').classList.add('hidden');
+
+    function irParaHospedado(destino){
+      const url = window.location.origin + '/' + getNomeArquivo() + '?view=' + destino;
+      const nomeJanela = destino === 'palco' ? 'KaraokePalco' : 'KaraokeControle';
+      window.open(url, nomeJanela, 'noopener,width=1280,height=800,menubar=no,toolbar=no,location=no,status=no');
+    }
+    document.getElementById('btn-ir-palco').addEventListener('click', ()=> irParaHospedado('palco'));
+    document.getElementById('btn-ir-controle').addEventListener('click', ()=> irParaHospedado('controle'));
+    return;
+  }
+
+  const savedIp = localStorage.getItem('karaokeChooserIP');
+  const isLocal = currentHost === 'localhost' || currentHost === '127.0.0.1' || currentHost === '';
+
+  if(!isLocal){
+    // já está acessando por um IP (ex: veio de um link direto) — usa o mesmo
+    ipInput.value = currentHost;
+  }else if(savedIp){
+    ipInput.value = savedIp;
+  }else{
+    // não preenche o valor — só mostra "localhost" como dica (placeholder),
+    // assim dá pra colar o IP direto sem precisar apagar nada antes
+    ipInput.value = '';
+    ipInput.placeholder = 'localhost';
+  }
+
+  portaInput.value = window.location.port || '8000';
+
+  // pergunta pro proprio servidor qual e o IP dele na rede — assim nao precisa
+  // digitar nada nem lembrar de nada, o servidor ja conta a verdade.
+  fetch('/api/serverinfo', {cache: 'no-store'})
+    .then(r => r.ok ? r.json() : null)
+    .then(info => {
+      if(!info || !info.ip) return;
+      ipInput.value = info.ip;
+      portaInput.value = info.port || portaInput.value;
+      localStorage.setItem('karaokeChooserIP', info.ip);
+      localStorage.setItem('karaokeUltimoIP', info.ip); // usado tambem pelo QR do Palco/Controle
+    })
+    .catch(()=>{
+      // sem servidor respondendo (ex: abriu o arquivo direto, sem rodar o server.py) —
+      // mantem o que ja foi preenchido acima como alternativa
+    });
+
+  function irPara(destino){
+    const ip = ipInput.value.trim() || 'localhost';
+    const porta = portaInput.value.trim() || '8000';
+    localStorage.setItem('karaokeChooserIP', ip);
+    const url = 'http://' + ip + ':' + porta + '/' + getNomeArquivo() + '?view=' + destino;
+    const nomeJanela = destino === 'palco' ? 'KaraokePalco' : 'KaraokeControle';
+    window.open(url, nomeJanela, 'noopener,width=1280,height=800,menubar=no,toolbar=no,location=no,status=no');
+  }
+
+  document.getElementById('btn-ir-palco').addEventListener('click', ()=> irPara('palco'));
+  document.getElementById('btn-ir-controle').addEventListener('click', ()=> irPara('controle'));
+}
+
+/* ================= PALCO ================= */
+let ytPlayer = null;
+let playerReady = false;
+let ultimoIdCarregado = null;
+
+function onYouTubeIframeAPIReady(){
+  if(view !== 'palco') return;
+  ytPlayer = new YT.Player('ytplayer', {
+    height:'100%', width:'100%',
+    playerVars:{autoplay:1, controls:1, rel:0, modestbranding:1},
+    events:{
+      'onReady': onPlayerReady,
+      'onStateChange': onPlayerStateChange,
+      'onError': onPlayerError
+    }
+  });
+}
+
+async function onPlayerReady(){
+  playerReady = true;
+  await refreshPalco(); // garante que o video pendente carregue assim que o player fica pronto
+}
+
+function onPlayerStateChange(e){
+  if(e.data === YT.PlayerState.ENDED){
+    avancarNoPalco();
+  }
+}
+
+let timeoutAutoPular = null;
+
+let janelaYoutubeAberta = null;
+let intervalMonitorJanela = null;
+
+function onPlayerError(e){
+  // codigos 101/150 = dono do video bloqueou a incorporacao (embed) em outros sites;
+  // 2 = ID invalido; 5 = erro do player HTML5; 100 = video removido/privado.
+  mostrarAvisoErroVideo();
+}
+
+function mostrarAvisoErroVideo(){
+  const idBloqueado = ultimoIdCarregado;
+  let aviso = document.getElementById('erro-video-aviso');
+  if(!aviso){
+    aviso = document.createElement('div');
+    aviso.id = 'erro-video-aviso';
+    aviso.style.cssText = 'position:absolute; inset:0; z-index:20; display:flex; flex-direction:column; ' +
+      'align-items:center; justify-content:center; background:rgba(0,0,0,0.92); text-align:center; ' +
+      'font-family:Inter,sans-serif; color:#F5F3FF; gap:16px; padding:20px;';
+    document.querySelector('.palco-video-col').appendChild(aviso);
+  }
+
+  aviso.innerHTML = `
+    <div style="font-size:22px; font-weight:600;">⚠️ Este vídeo não pode ser tocado aqui</div>
+    <div id="msg-erro-video" style="color:#8886A3; font-size:15px; max-width:480px;">O dono do vídeo bloqueou a reprodução incorporada. Abrindo direto no YouTube, numa outra janela — quando a pessoa terminar de cantar, clique em "Próxima música" aqui embaixo.</div>
+    <div style="display:flex; gap:12px;">
+      <button id="btn-assistir-youtube" style="font-family:Inter; font-weight:600; font-size:14px; cursor:pointer; border:none; border-radius:8px; padding:12px 20px; background:#FF2E88; color:#fff;">▶ Abrir no YouTube de novo</button>
+      <button id="btn-pular-agora" style="font-family:Inter; font-weight:600; font-size:14px; cursor:pointer; border:1px solid #29283A; border-radius:8px; padding:12px 20px; background:transparent; color:#F5F3FF;">⏭ Próxima música</button>
+    </div>
+  `;
+  aviso.style.display = 'flex';
+
+  clearTimeout(timeoutAutoPular);
+  clearInterval(window._intervalContador);
+  clearInterval(intervalMonitorJanela);
+
+  function abrirVideo(){
+    if(!idBloqueado) return;
+    janelaYoutubeAberta = window.open('https://www.youtube.com/watch?v=' + idBloqueado, '_blank');
+    const msgEl = document.getElementById('msg-erro-video');
+    if(!janelaYoutubeAberta && msgEl){
+      // navegador bloqueou o popup automatico — precisa do clique manual no botao
+      msgEl.textContent = 'O navegador bloqueou a abertura automática. Clique em "Abrir no YouTube de novo" para assistir.';
+    }
+    // OBS: o YouTube usa uma politica de seguranca (COOP) que impede detectar de forma
+    // confiavel quando essa janela e fechada — por isso o avanco pra proxima musica
+    // e sempre manual aqui, clicando em "Proxima musica".
+  }
+
+  // tenta abrir automaticamente assim que o erro aparece
+  abrirVideo();
+
+  document.getElementById('btn-pular-agora').addEventListener('click', ()=>{
+    clearTimeout(timeoutAutoPular);
+    clearInterval(window._intervalContador);
+    clearInterval(intervalMonitorJanela);
+    avancarNoPalco();
+  });
+
+  document.getElementById('btn-assistir-youtube').addEventListener('click', abrirVideo);
+}
+
+function showPlaying(id){
+  document.getElementById('idle-screen').classList.add('hidden');
+  document.getElementById('player-wrap').classList.remove('hidden');
+  document.getElementById('palco').classList.remove('idle-ativo');
+  const aviso = document.getElementById('erro-video-aviso');
+  if(aviso) aviso.style.display = 'none';
+  clearTimeout(timeoutAutoPular);
+  clearInterval(window._intervalContador);
+  clearInterval(intervalMonitorJanela);
+  if(playerReady) ytPlayer.loadVideoById(id);
+  ultimoIdCarregado = id;
+}
+function showIdle(){
+  document.getElementById('idle-screen').classList.remove('hidden');
+  document.getElementById('player-wrap').classList.add('hidden');
+  document.getElementById('palco').classList.add('idle-ativo');
+  const aviso = document.getElementById('erro-video-aviso');
+  if(aviso) aviso.style.display = 'none';
+  clearTimeout(timeoutAutoPular);
+  clearInterval(window._intervalContador);
+  clearInterval(intervalMonitorJanela);
+  if(playerReady && ytPlayer && typeof ytPlayer.stopVideo === 'function'){
+    ytPlayer.stopVideo(); // essencial — sem isso o audio continua tocando mesmo com o video escondido
+  }
+  ultimoIdCarregado = null;
+}
+
+async function avancarNoPalco(){
+  const state = await apiAdvance();
+  aplicarEstadoPalco(state);
+}
+
+function aplicarEstadoPalco(state){
+  if(state.current){
+    if(state.current.id !== ultimoIdCarregado){
+      showPlaying(state.current.id);
+    }
+  }else{
+    showIdle();
+  }
+  atualizarPainelInfoPalco(state);
+}
+
+async function refreshPalco(){
+  const state = await fetchState();
+  if(!state.current && state.queue.length > 0){
+    await avancarNoPalco();
+    return;
+  }
+  aplicarEstadoPalco(state);
+  atualizarQrPalco();
+}
+
+function atualizarPainelInfoPalco(state){
+  const listaEl = document.getElementById('palco-fila-lista');
+  const MAX_VISIVEIS = 4;
+  if(!state.queue || state.queue.length === 0){
+    listaEl.innerHTML = '<div class="palco-fila-vazia">Fila vazia — escaneie o QR e adicione a sua!</div>';
+    return;
+  }
+  let html = '';
+  state.queue.slice(0, MAX_VISIVEIS).forEach((item, i)=>{
+    html += `
+      <div class="palco-fila-item">
+        <div class="num">${i+1}</div>
+        <div class="txt">
+          <div class="titulo">${item.titulo}</div>
+          <div class="cantor">🎤 ${item.cantor}</div>
+        </div>
+      </div>
+    `;
+  });
+  if(state.queue.length > MAX_VISIVEIS){
+    html += `<div class="palco-fila-mais">+ ${state.queue.length - MAX_VISIVEIS} música(s) na fila</div>`;
+  }
+  listaEl.innerHTML = html;
+}
+
+/* ---- QR code de convidados, exibido no proprio Palco ---- */
+let ultimaUrlQrPalco = null;
+
+function obterHostParaConvidados(){
+  const hostAtual = window.location.hostname;
+  const ehLocal = hostAtual === 'localhost' || hostAtual === '127.0.0.1' || hostAtual === '';
+  if(!ehLocal) return hostAtual; // o proprio Palco ja foi aberto pelo IP real da rede
+  // senao, tenta usar o IP que foi salvo em algum momento pelo Controle
+  return localStorage.getItem('karaokeUltimoIP') || localStorage.getItem('karaokeChooserIP') || null;
+}
+
+function atualizarQrPalco(){
+  const host = obterHostParaConvidados();
+  const box = document.getElementById('palco-qr-box');
+  if(!host){
+    box.innerHTML = '<span>Defina o IP<br>no Controle<br>para gerar o QR</span>';
+    ultimaUrlQrPalco = null;
+    return;
+  }
+  const porta = window.location.port ? (':' + window.location.port) : '';
+  const url = window.location.protocol + '//' + host + porta + '/' + getNomeArquivo() + '?view=convidado';
+  if(url === ultimaUrlQrPalco) return; // evita regerar o mesmo QR a cada poll
+  try{
+    const qr = gerarObjetoQr(url);
+    const cellSize = 5;
+    const margin = cellSize * 4;
+    const nativeSize = qr.getModuleCount() * cellSize + margin * 2;
+    box.innerHTML = qr.createSvgTag(cellSize, margin);
+    const svg = box.querySelector('svg');
+    svg.setAttribute('viewBox', '0 0 ' + nativeSize + ' ' + nativeSize);
+    svg.removeAttribute('width');
+    svg.removeAttribute('height');
+    svg.style.width = '100%';
+    svg.style.height = '100%';
+    svg.style.display = 'block';
+    ultimaUrlQrPalco = url;
+  }catch(err){
+    box.innerHTML = '<span>Erro ao gerar QR</span>';
+  }
+}
+
+
+
+/* ================= CONTROLE ================= */
+function initControle(){
+  document.title = 'Karaokê — Controle';
+  const linkPalco = window.location.origin + '/' + getNomeArquivo() + '?view=palco';
+  document.getElementById('link-palco-txt').textContent = linkPalco;
+  document.getElementById('btn-copiar-link').addEventListener('click', ()=>{
+    navigator.clipboard.writeText(linkPalco);
+    const btn = document.getElementById('btn-copiar-link');
+    const original = btn.textContent;
+    btn.textContent = 'Copiado ✓';
+    setTimeout(()=>btn.textContent = original, 1500);
+  });
+
+  document.getElementById('btn-add').addEventListener('click', addToQueue);
+  document.getElementById('input-cantor').addEventListener('keydown', (e)=>{ if(e.key==='Enter') addToQueue(); });
+  document.getElementById('input-link').addEventListener('keydown', (e)=>{ if(e.key==='Enter') addToQueue(); });
+
+  document.getElementById('btn-busca').addEventListener('click', ()=>{
+    const termo = document.getElementById('input-busca').value.trim();
+    if(!termo) return;
+    const url = 'https://www.youtube.com/results?search_query=' + encodeURIComponent(termo + ' karaokê letra');
+    window.open(url, '_blank');
+  });
+  document.getElementById('input-busca').addEventListener('keydown', (e)=>{
+    if(e.key==='Enter') document.getElementById('btn-busca').click();
+  });
+
+  document.getElementById('btn-pular').addEventListener('click', async ()=>{
+    const btn = document.getElementById('btn-pular');
+    btn.disabled = true;
+    await apiAdvance();
+    await renderControle();
+    btn.disabled = false;
+  });
+
+  renderControle();
+  setInterval(renderControle, 1500); // sincroniza com mudanças feitas por outros dispositivos
+  initQrCode();
+}
+
+/* ---- QR Code para convidados ---- */
+
+function buildControleUrl(ip){
+  const port = window.location.port ? (':' + window.location.port) : '';
+  return window.location.protocol + '//' + ip + port + '/' + getNomeArquivo() + '?view=convidado';
+}
+
+function gerarObjetoQr(text){
+  // Tenta o menor "type" possível que caiba o texto (a lib não faz auto-detect nesta versão)
+  for(let type = 1; type <= 20; type++){
+    try{
+      const qr = qrcode(type, 'M');
+      qr.addData(text);
+      qr.make();
+      return qr;
+    }catch(e){
+      continue; // texto não coube nesse type, tenta o próximo
+    }
+  }
+  throw new Error('Link longo demais para gerar o QR Code.');
+}
+
+function renderQr(ip){
+  const url = buildControleUrl(ip);
+  const box = document.getElementById('qr-box');
+  try{
+    const qr = gerarObjetoQr(url);
+    // zona de silêncio (margem branca) de pelo menos 4 módulos, como recomendado
+    // pelo padrão QR — sem isso, câmeras de celular têm dificuldade de reconhecer o código.
+    const cellSize = 6;
+    const margin = cellSize * 4;
+    box.classList.remove('empty');
+    box.innerHTML = qr.createSvgTag(cellSize, margin);
+    const svg = box.querySelector('svg');
+    const nativeSize = qr.getModuleCount() * cellSize + margin * 2;
+    // Sem viewBox, redimensionar via CSS CORTA o desenho em vez de escalar —
+    // isso é o que fazia o QR parecer normal visualmente mas não ser lido por nenhuma câmera.
+    svg.setAttribute('viewBox', '0 0 ' + nativeSize + ' ' + nativeSize);
+    svg.removeAttribute('width');
+    svg.removeAttribute('height');
+    svg.style.width = '100%';
+    svg.style.height = '100%';
+    svg.style.display = 'block';
+    document.getElementById('qr-url-final').textContent = url;
+  }catch(err){
+    alert('Erro ao gerar o QR Code: ' + err.message + '\n\nVocê pode enviar este link manualmente para o celular:\n' + url);
+    document.getElementById('qr-url-final').textContent = url;
+  }
+}
+
+function initQrCode(){
+  const ipInput = document.getElementById('input-ip');
+  const savedIp = localStorage.getItem(IP_STORAGE_KEY);
+  if(savedIp){
+    ipInput.value = savedIp;
+    renderQr(savedIp);
+  }
+  document.getElementById('btn-gerar-qr').addEventListener('click', ()=>{
+    const ip = ipInput.value.trim();
+    if(!ip){
+      alert('Digite o IP do notebook. Descubra com "ipconfig getifaddr en0" no Terminal.');
+      return;
+    }
+    localStorage.setItem(IP_STORAGE_KEY, ip);
+    renderQr(ip);
+  });
+  ipInput.addEventListener('keydown', (e)=>{
+    if(e.key === 'Enter') document.getElementById('btn-gerar-qr').click();
+  });
+}
+
+async function addToQueue(){
+  const linkInput = document.getElementById('input-link');
+  const cantorInput = document.getElementById('input-cantor');
+  const btn = document.getElementById('btn-add');
+  const id = extractYouTubeId(linkInput.value.trim());
+  if(!id){
+    alert('Não consegui identificar o link do YouTube. Cole um link completo, ex: https://www.youtube.com/watch?v=XXXXXXXXXXX');
+    return;
+  }
+  const cantor = cantorInput.value.trim() || 'Convidado(a)';
+
+  const original = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Buscando música...';
+  const tituloReal = await fetchYouTubeTitle(id);
+  btn.disabled = false;
+  btn.textContent = original;
+
+  await apiAdd({
+    id,
+    titulo: tituloReal || 'Música (' + id + ')',
+    cantor,
+    addedAt: Date.now()
+  });
+  linkInput.value = '';
+  cantorInput.value = '';
+  renderControle();
+}
+
+async function removeFromQueue(index){
+  await apiRemove(index);
+  renderControle();
+}
+
+async function moveInQueue(index, dir){
+  await apiMove(index, dir);
+  renderControle();
+}
+
+async function renderControle(){
+  const state = await fetchState();
+
+  const tituloEl = document.getElementById('agora-titulo');
+  const cantorEl = document.getElementById('agora-cantor');
+  if(state.current){
+    tituloEl.textContent = state.current.titulo;
+    cantorEl.textContent = '🎤 ' + state.current.cantor;
+  }else{
+    tituloEl.innerHTML = '<span class="vazio">Nenhuma música tocando</span>';
+    cantorEl.textContent = '';
+  }
+
+  const filaEl = document.getElementById('fila');
+  filaEl.innerHTML = '';
+  if(state.queue.length === 0){
+    filaEl.innerHTML = '<div class="fila-vazia-msg">A fila está vazia. Adicione uma música acima ☝️</div>';
+    return;
+  }
+  state.queue.forEach((item, i)=>{
+    const div = document.createElement('div');
+    div.className = 'fila-item';
+    div.innerHTML = `
+      <div class="pos">${i+1}</div>
+      <div class="info">
+        <div class="titulo">${item.titulo}</div>
+        <div class="cantor">🎤 ${item.cantor}</div>
+      </div>
+      <div class="acoes">
+        <button class="btn-ghost" data-action="up" data-i="${i}">↑</button>
+        <button class="btn-ghost" data-action="down" data-i="${i}">↓</button>
+        <button class="btn-ghost btn-danger" data-action="remove" data-i="${i}">✕</button>
+      </div>
+    `;
+    filaEl.appendChild(div);
+  });
+  filaEl.querySelectorAll('button').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const i = parseInt(btn.dataset.i);
+      const action = btn.dataset.action;
+      if(action === 'remove') removeFromQueue(i);
+      if(action === 'up') moveInQueue(i, -1);
+      if(action === 'down') moveInQueue(i, 1);
+    });
+  });
+}
+
+function initPalco(){
+  document.title = 'Karaokê — Palco';
+  // o video em si so carrega quando onYouTubeIframeAPIReady/onPlayerReady disparar,
+  // mas o QR code e a lista da fila nao devem depender disso — comecam a atualizar ja.
+  refreshPalco();
+  setInterval(refreshPalco, 1500);
+}
+
+/* ================= CONVIDADO ================= */
+function initConvidado(){
+  document.title = 'Karaokê — Pedir Música';
+  document.getElementById('btn-add-conv').addEventListener('click', addToQueueConv);
+  document.getElementById('input-link-conv').addEventListener('keydown', (e)=>{ if(e.key==='Enter') addToQueueConv(); });
+  document.getElementById('input-cantor-conv').addEventListener('keydown', (e)=>{ if(e.key==='Enter') addToQueueConv(); });
+
+  document.getElementById('btn-busca-conv').addEventListener('click', ()=>{
+    const termo = document.getElementById('input-busca-conv').value.trim();
+    if(!termo) return;
+    const url = 'https://www.youtube.com/results?search_query=' + encodeURIComponent(termo + ' karaokê letra');
+    window.open(url, '_blank');
+  });
+  document.getElementById('input-busca-conv').addEventListener('keydown', (e)=>{
+    if(e.key==='Enter') document.getElementById('btn-busca-conv').click();
+  });
+
+  renderConvidado();
+  setInterval(renderConvidado, 1500); // sincroniza com o que outros dispositivos adicionaram
+}
+
+async function addToQueueConv(){
+  const linkInput = document.getElementById('input-link-conv');
+  const cantorInput = document.getElementById('input-cantor-conv');
+  const btn = document.getElementById('btn-add-conv');
+  const id = extractYouTubeId(linkInput.value.trim());
+  if(!id){
+    alert('Não consegui identificar o link do YouTube. Cole um link completo, ex: https://www.youtube.com/watch?v=XXXXXXXXXXX');
+    return;
+  }
+  const cantor = cantorInput.value.trim() || 'Convidado(a)';
+
+  const original = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Buscando música...';
+  const tituloReal = await fetchYouTubeTitle(id);
+
+  await apiAdd({
+    id,
+    titulo: tituloReal || 'Música (' + id + ')',
+    cantor,
+    addedAt: Date.now()
+  });
+  linkInput.value = '';
+  cantorInput.value = '';
+  renderConvidado();
+  btn.disabled = false;
+  btn.textContent = 'Adicionado ✓';
+  setTimeout(()=>btn.textContent = original, 1500);
+}
+
+async function renderConvidado(){
+  const state = await fetchState();
+
+  const tituloEl = document.getElementById('agora-titulo-conv');
+  const cantorEl = document.getElementById('agora-cantor-conv');
+  if(state.current){
+    tituloEl.textContent = state.current.titulo;
+    cantorEl.textContent = '🎤 ' + state.current.cantor;
+  }else{
+    tituloEl.innerHTML = '<span class="vazio">Nenhuma música tocando</span>';
+    cantorEl.textContent = '';
+  }
+
+  const filaEl = document.getElementById('fila-conv');
+  filaEl.innerHTML = '';
+  if(state.queue.length === 0){
+    filaEl.innerHTML = '<div class="fila-vazia-msg">A fila está vazia. Adicione uma música acima ☝️</div>';
+    return;
+  }
+  state.queue.forEach((item, i)=>{
+    const div = document.createElement('div');
+    div.className = 'fila-item';
+    div.innerHTML = `
+      <div class="pos">${i+1}</div>
+      <div class="info">
+        <div class="titulo">${item.titulo}</div>
+        <div class="cantor">🎤 ${item.cantor}</div>
+      </div>
+    `;
+    filaEl.appendChild(div);
+  });
+}
+</script>
+</body>
+</html>
