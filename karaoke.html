@@ -54,6 +54,12 @@
   }
   .chooser-ip-row input:focus{outline:none; border-color:var(--neon-cyan);}
 
+  .chooser-sala-panel{
+    display:flex; align-items:center; gap:14px; color:var(--muted); font-size:13px;
+    font-family:'Inter',sans-serif;
+  }
+  .chooser-sala-panel b{color:var(--neon-cyan); letter-spacing:2px; font-size:16px;}
+
   /* ---------- PALCO ---------- */
   #palco{
     height:100vh; width:100vw; background:#000; overflow:hidden;
@@ -123,6 +129,26 @@
     padding:12px 14px; font-size:15px; font-family:'Inter';
   }
   input[type=text]:focus{outline:none; border-color:var(--neon-cyan);}
+  select{
+    background:#0e0d17; border:1px solid var(--line); border-radius:8px; color:var(--text);
+    padding:12px 14px; font-size:15px; font-family:'Inter'; cursor:pointer;
+  }
+  select:focus{outline:none; border-color:var(--neon-cyan);}
+  .cat-item{
+    display:flex; align-items:center; gap:10px; background:#0e0d17; border:1px solid var(--line);
+    border-radius:10px; padding:10px 12px;
+  }
+  .cat-item .info{flex:1; min-width:0;}
+  .cat-item .titulo{font-weight:600; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .cat-item .meta{color:var(--muted); font-size:12px;}
+  .cat-item .meta b{color:var(--neon-cyan);}
+  .cat-tab.ativo{border-color:var(--neon-pink); color:var(--neon-pink);}
+  .btn-indice-az{
+    width:22px; height:20px; font-size:11px; font-weight:700; padding:0; border-radius:4px;
+    border:none; background:transparent; color:var(--muted); cursor:pointer; font-family:'Inter';
+  }
+  .btn-indice-az:hover:not([disabled]){background:var(--bg-raised); color:var(--neon-cyan);}
+  .btn-indice-az[disabled]{color:#3a3948; cursor:default;}
   button{
     font-family:'Inter'; font-weight:600; font-size:14px; cursor:pointer; border:none; border-radius:8px;
     padding:12px 18px; transition:transform .1s ease, opacity .15s ease;
@@ -203,11 +229,16 @@
     </div>
   </div>
 
+  <div class="chooser-sala-panel">
+    <span>Sua sala: <b id="chooser-sala-codigo">------</b></span>
+    <button class="btn-ghost" id="btn-nova-sala" type="button">Gerar nova sala</button>
+  </div>
+
   <div class="choice-row">
     <button class="choice-btn" id="btn-ir-palco">🎤 Abrir Palco<small>Arraste esta janela para a TV e deixe em tela cheia</small></button>
     <button class="choice-btn" id="btn-ir-controle">📋 Abrir Controle<small>Fica no notebook — escolher músicas e gerenciar a fila</small></button>
   </div>
-  <div style="color:rgba(255,255,255,0.25); font-size:11px; font-family:'Inter',sans-serif;">v2026-07-17-colunas-v1</div>
+  <div style="color:rgba(255,255,255,0.25); font-size:11px; font-family:'Inter',sans-serif;">v2026-07-20-salas-v1</div>
 </div>
 
 <!-- PALCO (vai para a TV) -->
@@ -262,6 +293,30 @@
     <button class="btn-secondary btn-danger" id="btn-pular">Pular ⏭</button>
   </div>
 
+  <div class="panel">
+    <h2>Catálogo de favoritas (só você gerencia — os convidados escolhem daqui)</h2>
+    <div class="row">
+      <input type="text" id="cat-input-link" placeholder="Cole o link do YouTube">
+    </div>
+    <div class="row">
+      <input type="text" id="cat-input-artista" placeholder="Artista/intérprete">
+      <select id="cat-input-idioma">
+        <option>Português</option>
+        <option>Inglês</option>
+        <option>Espanhol</option>
+        <option>Outro</option>
+      </select>
+    </div>
+    <div class="row">
+      <input type="text" id="cat-input-playlist" placeholder="Nome da lista (opcional, ex: Anos 80, Favoritas da família)">
+      <button class="btn-primary" id="cat-btn-add">Adicionar ao catálogo</button>
+    </div>
+    <div class="row">
+      <input type="text" id="cat-busca-admin" placeholder="Buscar no catálogo (nome ou artista)...">
+    </div>
+    <div id="cat-lista-admin" style="margin-top:14px; display:flex; flex-direction:column; gap:8px;"></div>
+  </div>
+
   <div class="panel" style="flex:1; display:flex; flex-direction:column; min-height:0;">
     <h2>Próximas da fila</h2>
     <div id="fila"></div>
@@ -295,7 +350,30 @@
   <h1>KARAOKÊ <span>PEDIR MÚSICA</span></h1>
 
   <div class="panel">
-    <h2>Adicionar música à fila</h2>
+    <h2>Catálogo de favoritas</h2>
+    <div class="row">
+      <input type="text" id="conv-cat-seu-nome" placeholder="Seu nome (usado ao adicionar músicas do catálogo)">
+    </div>
+    <div class="choice-row" style="gap:8px; margin-bottom:10px;">
+      <button class="btn-secondary cat-tab" data-campo="busca" style="flex:1; padding:10px;">Buscar</button>
+      <button class="btn-secondary cat-tab" data-campo="lista" style="flex:1; padding:10px;">Sugestão</button>
+    </div>
+    <div class="row" id="conv-cat-busca-wrap" style="display:none;">
+      <input type="text" id="conv-cat-busca-texto" placeholder="Digite o nome da música ou do artista...">
+    </div>
+    <div class="row" id="conv-cat-lista-nav" style="display:none; align-items:center; justify-content:space-between;">
+      <button class="btn-ghost" id="btn-lista-anterior">← Anterior</button>
+      <span id="conv-cat-lista-pagina" style="color:var(--muted); font-size:13px;"></span>
+      <button class="btn-ghost" id="btn-lista-proxima">Próxima →</button>
+    </div>
+    <div style="display:flex; gap:6px; align-items:flex-start;">
+      <div id="conv-cat-musicas" style="display:flex; flex-direction:column; gap:8px; flex:1; min-width:0;"></div>
+      <div id="conv-cat-indice-az" style="display:flex; flex-direction:column; flex-shrink:0;"></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Ou cole o link direto</h2>
     <div class="row">
       <input type="text" id="input-link-conv" placeholder="Cole o link do YouTube aqui (ex: https://youtu.be/...)">
     </div>
@@ -1664,9 +1742,13 @@ var qrcode = function() {
 let qrInstance = null;
 const IP_STORAGE_KEY = 'karaokeUltimoIP';
 
+function obterSalaAtual(){
+  return new URLSearchParams(window.location.search).get('sala') || 'geral';
+}
+
 async function fetchState(){
   try{
-    const r = await fetch('/api/state', {cache:'no-store'});
+    const r = await fetch('/api/state?sala=' + encodeURIComponent(obterSalaAtual()), {cache:'no-store'});
     if(!r.ok) throw new Error('status ' + r.status);
     return await r.json();
   }catch(e){
@@ -1676,7 +1758,7 @@ async function fetchState(){
 }
 
 async function apiAdd(item){
-  const r = await fetch('/api/queue/add', {
+  const r = await fetch('/api/queue/add?sala=' + encodeURIComponent(obterSalaAtual()), {
     method:'POST',
     headers:{'Content-Type':'application/json'},
     body: JSON.stringify(item)
@@ -1685,12 +1767,12 @@ async function apiAdd(item){
 }
 
 async function apiAdvance(){
-  const r = await fetch('/api/queue/advance', {method:'POST'});
+  const r = await fetch('/api/queue/advance?sala=' + encodeURIComponent(obterSalaAtual()), {method:'POST'});
   return await r.json();
 }
 
 async function apiRemove(index){
-  const r = await fetch('/api/queue/remove', {
+  const r = await fetch('/api/queue/remove?sala=' + encodeURIComponent(obterSalaAtual()), {
     method:'POST',
     headers:{'Content-Type':'application/json'},
     body: JSON.stringify({index})
@@ -1699,7 +1781,7 @@ async function apiRemove(index){
 }
 
 async function apiMove(index, direction){
-  const r = await fetch('/api/queue/move', {
+  const r = await fetch('/api/queue/move?sala=' + encodeURIComponent(obterSalaAtual()), {
     method:'POST',
     headers:{'Content-Type':'application/json'},
     body: JSON.stringify({index, direction})
@@ -1781,11 +1863,37 @@ function pareceEnderecoDeRedeLocal(host){
   return false;
 }
 
+function gerarCodigoSala(){
+  // sem 0/O, 1/I/L pra evitar confusao na hora de ler/digitar
+  const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+  let s = '';
+  for(let i=0;i<5;i++) s += chars[Math.floor(Math.random()*chars.length)];
+  return s;
+}
+
 function initChooser(){
   const ipInput = document.getElementById('chooser-ip');
   const portaInput = document.getElementById('chooser-porta');
   const currentHost = window.location.hostname;
   const ehRedeLocal = pareceEnderecoDeRedeLocal(currentHost);
+
+  // cada tela inicial tem sua propria sala — assim quem abre o link publico do
+  // zero nao cai na mesma fila de outra pessoa. Se essa aba/navegador ja tinha
+  // uma sala em andamento, reaproveita (pra nao perder o link no meio da festa
+  // por causa de um F5); "Gerar nova sala" comeca do zero quando quiser.
+  const salaCodigoEl = document.getElementById('chooser-sala-codigo');
+  let salaAtual = localStorage.getItem('karaokeSalaAtual');
+  if(!salaAtual){
+    salaAtual = gerarCodigoSala();
+    localStorage.setItem('karaokeSalaAtual', salaAtual);
+  }
+  salaCodigoEl.textContent = salaAtual;
+
+  document.getElementById('btn-nova-sala').addEventListener('click', ()=>{
+    salaAtual = gerarCodigoSala();
+    localStorage.setItem('karaokeSalaAtual', salaAtual);
+    salaCodigoEl.textContent = salaAtual;
+  });
 
   if(!ehRedeLocal){
     // Hospedado na internet (ex: Render) — nao existe "IP da rede" pra digitar,
@@ -1793,7 +1901,7 @@ function initChooser(){
     document.querySelector('.chooser-ip-panel').classList.add('hidden');
 
     function irParaHospedado(destino){
-      const url = window.location.origin + '/' + getNomeArquivo() + '?view=' + destino;
+      const url = window.location.origin + '/' + getNomeArquivo() + '?view=' + destino + '&sala=' + salaAtual;
       const nomeJanela = destino === 'palco' ? 'KaraokePalco' : 'KaraokeControle';
       window.open(url, nomeJanela, 'noopener,width=1280,height=800,menubar=no,toolbar=no,location=no,status=no');
     }
@@ -1839,7 +1947,7 @@ function initChooser(){
     const ip = ipInput.value.trim() || 'localhost';
     const porta = portaInput.value.trim() || '8000';
     localStorage.setItem('karaokeChooserIP', ip);
-    const url = 'http://' + ip + ':' + porta + '/' + getNomeArquivo() + '?view=' + destino;
+    const url = 'http://' + ip + ':' + porta + '/' + getNomeArquivo() + '?view=' + destino + '&sala=' + salaAtual;
     const nomeJanela = destino === 'palco' ? 'KaraokePalco' : 'KaraokeControle';
     window.open(url, nomeJanela, 'noopener,width=1280,height=800,menubar=no,toolbar=no,location=no,status=no');
   }
@@ -2038,7 +2146,7 @@ function atualizarQrPalco(){
     return;
   }
   const porta = window.location.port ? (':' + window.location.port) : '';
-  const url = window.location.protocol + '//' + host + porta + '/' + getNomeArquivo() + '?view=convidado';
+  const url = window.location.protocol + '//' + host + porta + '/' + getNomeArquivo() + '?view=convidado&sala=' + encodeURIComponent(obterSalaAtual());
   if(url === ultimaUrlQrPalco) return; // evita regerar o mesmo QR a cada poll
   try{
     const qr = gerarObjetoQr(url);
@@ -2064,7 +2172,7 @@ function atualizarQrPalco(){
 /* ================= CONTROLE ================= */
 function initControle(){
   document.title = 'Karaokê — Controle';
-  const linkPalco = window.location.origin + '/' + getNomeArquivo() + '?view=palco';
+  const linkPalco = window.location.origin + '/' + getNomeArquivo() + '?view=palco&sala=' + encodeURIComponent(obterSalaAtual());
   document.getElementById('link-palco-txt').textContent = linkPalco;
   document.getElementById('btn-copiar-link').addEventListener('click', ()=>{
     navigator.clipboard.writeText(linkPalco);
@@ -2099,13 +2207,145 @@ function initControle(){
   renderControle();
   setInterval(renderControle, 1500); // sincroniza com mudanças feitas por outros dispositivos
   initQrCode();
+  initCatalogoAdmin();
+}
+
+/* ================= CATÁLOGO (favoritas) ================= */
+async function fetchCatalogo(){
+  try{
+    const r = await fetch('/api/catalogo', {cache:'no-store'});
+    if(!r.ok) throw new Error('status ' + r.status);
+    const data = await r.json();
+    return data.catalogo || [];
+  }catch(e){
+    console.error('Falha ao buscar o catálogo:', e);
+    return [];
+  }
+}
+
+async function apiCatalogoAdd(item){
+  const r = await fetch('/api/catalogo/add', {
+    method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(item)
+  });
+  const data = await r.json();
+  return data.catalogo || [];
+}
+
+async function apiCatalogoRemove(index){
+  const r = await fetch('/api/catalogo/remove', {
+    method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({index})
+  });
+  const data = await r.json();
+  return data.catalogo || [];
+}
+
+function initCatalogoAdmin(){
+  document.getElementById('cat-btn-add').addEventListener('click', async ()=>{
+    const linkInput = document.getElementById('cat-input-link');
+    const artistaInput = document.getElementById('cat-input-artista');
+    const idiomaInput = document.getElementById('cat-input-idioma');
+    const playlistInput = document.getElementById('cat-input-playlist');
+    const btn = document.getElementById('cat-btn-add');
+
+    const id = extractYouTubeId(linkInput.value.trim());
+    if(!id){
+      alert('Cole um link do YouTube válido.');
+      return;
+    }
+    const original = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Buscando música...';
+    const tituloReal = await fetchYouTubeTitle(id);
+    btn.disabled = false;
+    btn.textContent = original;
+
+    await apiCatalogoAdd({
+      id,
+      titulo: tituloReal || ('Música (' + id + ')'),
+      artista: artistaInput.value.trim(),
+      idioma: idiomaInput.value,
+      playlist: playlistInput.value.trim()
+    });
+    linkInput.value = '';
+    artistaInput.value = '';
+    playlistInput.value = '';
+    renderCatalogoAdmin();
+  });
+
+  renderCatalogoAdmin();
+
+  document.getElementById('cat-busca-admin').addEventListener('input', ()=>{
+    renderCatalogoAdmin();
+  });
+}
+
+const LIMITE_ADMIN_CATALOGO = 50;
+
+async function renderCatalogoAdmin(){
+  const listaCompleta = await fetchCatalogo();
+  const termo = (document.getElementById('cat-busca-admin').value || '').trim().toLowerCase();
+  const el = document.getElementById('cat-lista-admin');
+  el.innerHTML = '';
+
+  if(listaCompleta.length === 0){
+    el.innerHTML = '<div class="palco-fila-vazia">Catálogo vazio ainda.</div>';
+    return;
+  }
+
+  let lista = listaCompleta;
+  let indices = listaCompleta.map((_, i) => i);
+  if(termo){
+    const filtrado = [];
+    listaCompleta.forEach((item, i)=>{
+      if((item.titulo||'').toLowerCase().includes(termo) || (item.artista||'').toLowerCase().includes(termo)){
+        filtrado.push(i);
+      }
+    });
+    indices = filtrado;
+  }else{
+    // sem busca: mostra so as primeiras N pra nao travar a tela com milhares de itens
+    indices = indices.slice(0, LIMITE_ADMIN_CATALOGO);
+  }
+
+  if(indices.length === 0){
+    el.innerHTML = '<div class="palco-fila-vazia">Nada encontrado.</div>';
+    return;
+  }
+
+  const aviso = document.createElement('div');
+  aviso.className = 'palco-fila-mais';
+  aviso.style.textAlign = 'left';
+  aviso.textContent = termo
+    ? `${indices.length} resultado(s) para "${termo}" (de ${listaCompleta.length} no total)`
+    : `Mostrando as primeiras ${indices.length} de ${listaCompleta.length} — use a busca acima pra achar outras`;
+  el.appendChild(aviso);
+
+  indices.forEach(i=>{
+    const item = listaCompleta[i];
+    const div = document.createElement('div');
+    div.className = 'cat-item';
+    div.innerHTML = `
+      <div class="info">
+        <div class="titulo">${item.titulo}</div>
+        <div class="meta"><b>${item.idioma || ''}</b> ${item.artista ? '· ' + item.artista : ''} ${item.playlist ? '· 📁 ' + item.playlist : ''} ${!item.id ? '· <span style="color:var(--muted);">sem link</span>' : ''}</div>
+      </div>
+      <button class="btn-ghost btn-danger" data-i="${i}">✕</button>
+    `;
+    el.appendChild(div);
+  });
+  el.querySelectorAll('button').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      await apiCatalogoRemove(parseInt(btn.dataset.i));
+      renderCatalogoAdmin();
+    });
+  });
 }
 
 /* ---- QR Code para convidados ---- */
 
 function buildControleUrl(ip){
   const port = window.location.port ? (':' + window.location.port) : '';
-  return window.location.protocol + '//' + ip + port + '/' + getNomeArquivo() + '?view=convidado';
+  return window.location.protocol + '//' + ip + port + '/' + getNomeArquivo() + '?view=convidado&sala=' + encodeURIComponent(obterSalaAtual());
 }
 
 function gerarObjetoQr(text){
@@ -2285,6 +2525,201 @@ function initConvidado(){
 
   renderConvidado();
   setInterval(renderConvidado, 1500); // sincroniza com o que outros dispositivos adicionaram
+  initCatalogoConvidado();
+}
+
+/* ---- Navegação do catálogo (Convidado) ---- */
+let catalogoCache = [];
+let catalogoCampoAtivo = null;
+let paginaListaAtual = 0;
+const LIMITE_RESULTADOS_CATALOGO = 40;
+const ITENS_POR_PAGINA_LISTA = 25;
+
+async function initCatalogoConvidado(){
+  catalogoCache = await fetchCatalogo();
+
+  document.querySelectorAll('.cat-tab').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('.cat-tab').forEach(b=>b.classList.remove('ativo'));
+      btn.classList.add('ativo');
+      catalogoCampoAtivo = btn.dataset.campo;
+      document.getElementById('conv-cat-busca-wrap').style.display = catalogoCampoAtivo === 'busca' ? 'flex' : 'none';
+      document.getElementById('conv-cat-lista-nav').style.display = catalogoCampoAtivo === 'lista' ? 'flex' : 'none';
+
+      if(catalogoCampoAtivo === 'busca'){
+        document.getElementById('conv-cat-musicas').innerHTML =
+          '<div class="palco-fila-vazia">Digite acima pra buscar.</div>';
+      }else if(catalogoCampoAtivo === 'lista'){
+        paginaListaAtual = 0;
+        mostrarPaginaListaCompleta();
+      }
+    });
+  });
+
+  document.getElementById('conv-cat-busca-texto').addEventListener('input', ()=>{
+    buscarNoCatalogoPorTexto(document.getElementById('conv-cat-busca-texto').value);
+  });
+
+  document.getElementById('btn-lista-anterior').addEventListener('click', ()=>{
+    if(paginaListaAtual > 0){ paginaListaAtual--; mostrarPaginaListaCompleta(); }
+  });
+  document.getElementById('btn-lista-proxima').addEventListener('click', ()=>{
+    paginaListaAtual++; mostrarPaginaListaCompleta();
+  });
+}
+
+let listaOrdenadaPorArtista = null;
+
+function obterListaOrdenadaPorArtista(){
+  if(!listaOrdenadaPorArtista){
+    listaOrdenadaPorArtista = [...catalogoCache].sort((a,b)=>
+      (a.artista||'').localeCompare(b.artista||'', 'pt-BR') || (a.titulo||'').localeCompare(b.titulo||'', 'pt-BR')
+    );
+  }
+  return listaOrdenadaPorArtista;
+}
+
+function mostrarPaginaListaCompleta(){
+  const ordenada = obterListaOrdenadaPorArtista();
+  const totalPaginas = Math.max(1, Math.ceil(ordenada.length / ITENS_POR_PAGINA_LISTA));
+  paginaListaAtual = Math.max(0, Math.min(paginaListaAtual, totalPaginas - 1));
+  const inicio = paginaListaAtual * ITENS_POR_PAGINA_LISTA;
+  const pagina = ordenada.slice(inicio, inicio + ITENS_POR_PAGINA_LISTA);
+
+  document.getElementById('conv-cat-lista-pagina').textContent =
+    `Página ${paginaListaAtual + 1} de ${totalPaginas} (${ordenada.length} músicas)`;
+  document.getElementById('btn-lista-anterior').disabled = paginaListaAtual === 0;
+  document.getElementById('btn-lista-proxima').disabled = paginaListaAtual >= totalPaginas - 1;
+
+  renderizarListaCatalogo(pagina);
+  renderizarIndiceAZ();
+}
+
+function renderizarIndiceAZ(){
+  const el = document.getElementById('conv-cat-indice-az');
+  if(!el) return;
+  const ordenada = obterListaOrdenadaPorArtista();
+  const letras = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ#'.split('');
+  const disponiveis = new Set(ordenada.map(item=>{
+    const c = (item.artista||'?').trim().charAt(0).toUpperCase();
+    return /[A-ZÀ-Ú]/.test(c) ? c.normalize('NFD').replace(/[\u0300-\u036f]/g,'') : '#';
+  }));
+  el.innerHTML = letras.map(l=>{
+    const tem = disponiveis.has(l);
+    return `<button class="btn-indice-az" ${tem ? '' : 'disabled'} data-letra="${l}">${l}</button>`;
+  }).join('');
+  el.querySelectorAll('button:not([disabled])').forEach(btn=>{
+    btn.addEventListener('click', ()=> pularParaLetra(btn.dataset.letra));
+  });
+}
+
+function pularParaLetra(letra){
+  const ordenada = obterListaOrdenadaPorArtista();
+  let idx = ordenada.findIndex(item=>{
+    const c = (item.artista||'?').trim().charAt(0).toUpperCase();
+    const cSemAcento = /[A-ZÀ-Ú]/.test(c) ? c.normalize('NFD').replace(/[\u0300-\u036f]/g,'') : '#';
+    return cSemAcento === letra;
+  });
+  if(idx === -1) return;
+  paginaListaAtual = Math.floor(idx / ITENS_POR_PAGINA_LISTA);
+  mostrarPaginaListaCompleta();
+}
+
+function buscarNoCatalogoPorTexto(texto){
+  texto = texto.trim().toLowerCase();
+  if(texto.length < 2){
+    document.getElementById('conv-cat-musicas').innerHTML =
+      '<div class="palco-fila-vazia">Digite pelo menos 2 letras.</div>';
+    return;
+  }
+  const itens = catalogoCache.filter(item =>
+    (item.titulo || '').toLowerCase().includes(texto) ||
+    (item.artista || '').toLowerCase().includes(texto)
+  ).slice(0, LIMITE_RESULTADOS_CATALOGO);
+  renderizarListaCatalogo(itens);
+}
+
+function renderizarListaCatalogo(itens){
+  const musicasEl = document.getElementById('conv-cat-musicas');
+  musicasEl.innerHTML = '';
+  if(itens.length === 0){
+    musicasEl.innerHTML = '<div class="palco-fila-vazia">Nada encontrado.</div>';
+    return;
+  }
+  if(itens.length >= LIMITE_RESULTADOS_CATALOGO){
+    const aviso = document.createElement('div');
+    aviso.className = 'palco-fila-mais';
+    aviso.textContent = 'Mostrando as primeiras ' + LIMITE_RESULTADOS_CATALOGO + ' — refine a busca pra achar mais fácil.';
+    musicasEl.appendChild(aviso);
+  }
+  itens.forEach((item, i)=>{
+    const div = document.createElement('div');
+    div.className = 'cat-item';
+    div.dataset.i = i;
+    if(item.id){
+      div.innerHTML = `
+        <div class="info">
+          <div class="titulo">${item.titulo}</div>
+          <div class="meta">${item.artista ? item.artista : ''}${item.idioma ? ' · ' + item.idioma : ''}</div>
+        </div>
+        <button class="btn-primary btn-add-catalogo" style="padding:8px 14px; font-size:13px;">Adicionar</button>
+      `;
+    }else{
+      div.innerHTML = `
+        <div class="info">
+          <div class="titulo">${item.titulo}</div>
+          <div class="meta">${item.artista ? item.artista : ''}${item.idioma ? ' · ' + item.idioma : ''}</div>
+          <div class="cat-busca-confirma" style="display:none; margin-top:8px; gap:6px; flex-direction:column;">
+            <input type="text" class="cat-input-link-encontrado" placeholder="Cole aqui o link que você achou no YouTube">
+            <button class="btn-primary btn-confirmar-catalogo" style="padding:8px 14px; font-size:13px;">Confirmar e adicionar à fila</button>
+          </div>
+        </div>
+        <button class="btn-secondary btn-buscar-catalogo" style="padding:8px 14px; font-size:13px; white-space:nowrap;">Buscar no YouTube ↗</button>
+      `;
+    }
+    musicasEl.appendChild(div);
+  });
+
+  musicasEl.querySelectorAll('.btn-add-catalogo').forEach((btn, i)=>{
+    btn.addEventListener('click', async ()=>{
+      const item = itens[i];
+      const cantor = document.getElementById('conv-cat-seu-nome').value.trim() || 'Convidado(a)';
+      const original = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = 'Adicionado ✓';
+      await apiAdd({ id: item.id, titulo: item.titulo, cantor, addedAt: Date.now() });
+      renderConvidado();
+      setTimeout(()=>{ btn.disabled = false; btn.textContent = original; }, 1500);
+    });
+  });
+
+  musicasEl.querySelectorAll('.btn-buscar-catalogo').forEach((btn, i)=>{
+    btn.addEventListener('click', ()=>{
+      const item = itens[i];
+      const termo = item.titulo + (item.artista ? ' ' + item.artista : '') + ' karaokê';
+      window.open('https://www.youtube.com/results?search_query=' + encodeURIComponent(termo), '_blank');
+      const painel = btn.closest('.cat-item').querySelector('.cat-busca-confirma');
+      painel.style.display = 'flex';
+    });
+  });
+
+  musicasEl.querySelectorAll('.btn-confirmar-catalogo').forEach((btn, i)=>{
+    btn.addEventListener('click', async ()=>{
+      const item = itens[i];
+      const linkInput = btn.closest('.cat-item').querySelector('.cat-input-link-encontrado');
+      const id = extractYouTubeId(linkInput.value.trim());
+      if(!id){
+        alert('Cole um link válido do YouTube (ex: https://www.youtube.com/watch?v=XXXXXXXXXXX)');
+        return;
+      }
+      const cantor = document.getElementById('conv-cat-seu-nome').value.trim() || 'Convidado(a)';
+      const original = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = 'Adicionado ✓';
+      await apiAdd({ id, titulo: item.titulo, cantor, addedAt: Date.now() });
+      renderConvidado();
+    });
+  });
 }
 
 async function addToQueueConv(){

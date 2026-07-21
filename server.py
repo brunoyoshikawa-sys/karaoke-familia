@@ -3,18 +3,19 @@
 Servidor do Karaokê — Fila
 --------------------------
 Serve o karaoke.html normalmente (como um servidor de arquivos) e também
-guarda o estado da fila (quem está tocando, quem é o próximo) num arquivo
-local (karaoke_state.json), para que o notebook, a TV e os celulares dos
-convidados vejam sempre a MESMA fila.
+guarda o estado de cada "sala" (fila de músicas, quem está tocando) em
+memória — cada sala é isolada das outras, identificada por um código na
+URL (?sala=XXXXX), pra que pessoas diferentes abrindo o mesmo link público
+não acabem compartilhando a mesma fila sem querer.
 
 Como usar:
     python3 server.py           -> roda na porta 8000
     python3 server.py 8080      -> roda em outra porta, se quiser
 
 Depois é só abrir, por exemplo:
-    http://localhost:8000/karaoke.html?view=palco
-    http://localhost:8000/karaoke.html?view=controle
-    http://SEU_IP:8000/karaoke.html?view=convidado
+    http://localhost:8000/karaoke.html?view=palco&sala=ABCDE
+    http://localhost:8000/karaoke.html?view=controle&sala=ABCDE
+    http://SEU_IP:8000/karaoke.html?view=convidado&sala=ABCDE
 """
 
 import http.server
@@ -23,14 +24,89 @@ import os
 import socket
 import sys
 import threading
+import time
 import urllib.parse
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-STATE_FILE = os.path.join(BASE_DIR, 'karaoke_state.json')
+CATALOGO_FILE = os.path.join(BASE_DIR, 'catalogo.json')
+CATALOGO_INICIAL_FILE = os.path.join(BASE_DIR, 'catalogo_inicial.json')
 
 lock = threading.Lock()
+lock_catalogo = threading.Lock()
 
-DEFAULT_STATE = {"queue": [], "current": None}
+# Cada "sala" tem sua propria fila, isolada das outras — assim, como a URL
+# agora e publica, duas pessoas diferentes abrindo o karaokê nao acabam
+# compartilhando a mesma lista de musicas por acidente.
+# Estrutura: { "ABCDE": {"queue": [...], "current": ..., "last_access": 123456} }
+rooms = {}
+
+SALA_PADRAO = 'geral'  # usada só se alguem abrir um link antigo, sem ?sala=
+TEMPO_EXPIRACAO_SEGUNDOS = 12 * 60 * 60  # salas sem uso ha 12h sao descartadas
+
+# Catálogo de músicas favoritas — é GLOBAL (não depende da sala), curado só
+# pelo Controle, pra todo mundo poder escolher de uma lista pronta em vez de
+# ter que colar link do YouTube toda vez. Algumas entradas já têm "id" (vídeo
+# verificado), outras têm "id": None (ainda sem link — o link é buscado na
+# hora, quando o convidado escolhe a música).
+CATALOGO_INICIAL_PADRAO = [
+    {"id": "9VSjlVm2qF8", "titulo": "Nacionais 70, 80 e 90 - Mais Cantadas no Karaokê",
+     "artista": "Coletânea", "idioma": "Português", "playlist": "Sugestões"},
+]
+
+
+def carregar_catalogo_inicial():
+    if os.path.exists(CATALOGO_INICIAL_FILE):
+        try:
+            with open(CATALOGO_INICIAL_FILE, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                if isinstance(data, list):
+                    return data
+        except Exception:
+            pass
+    return list(CATALOGO_INICIAL_PADRAO)
+
+
+def carregar_catalogo():
+    if not os.path.exists(CATALOGO_FILE):
+        return carregar_catalogo_inicial()
+    try:
+        with open(CATALOGO_FILE, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+            if isinstance(data, list):
+                return data
+    except Exception:
+        pass
+    return carregar_catalogo_inicial()
+
+
+def salvar_catalogo(catalogo):
+    try:
+        with open(CATALOGO_FILE, 'w', encoding='utf-8') as f:
+            json.dump(catalogo, f, ensure_ascii=False)
+    except Exception:
+        pass  # se o disco for so-leitura (alguns hosts), o catalogo so fica em memoria
+
+
+catalogo = carregar_catalogo()
+
+
+def get_room(sala_id):
+    sala_id = (sala_id or SALA_PADRAO).strip().upper()[:20] or SALA_PADRAO
+    room = rooms.get(sala_id)
+    if room is None:
+        room = {"queue": [], "current": None}
+        rooms[sala_id] = room
+    room['last_access'] = time.time()
+    _limpar_salas_antigas()
+    return sala_id, room
+
+
+def _limpar_salas_antigas():
+    agora = time.time()
+    expiradas = [sid for sid, r in rooms.items()
+                 if agora - r.get('last_access', agora) > TEMPO_EXPIRACAO_SEGUNDOS]
+    for sid in expiradas:
+        del rooms[sid]
 
 
 def detectar_ip_local():
@@ -49,24 +125,6 @@ def detectar_ip_local():
     finally:
         s.close()
     return ip
-
-
-def load_state():
-    if not os.path.exists(STATE_FILE):
-        return dict(DEFAULT_STATE)
-    try:
-        with open(STATE_FILE, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-            data.setdefault('queue', [])
-            data.setdefault('current', None)
-            return data
-    except Exception:
-        return dict(DEFAULT_STATE)
-
-
-def save_state(state):
-    with open(STATE_FILE, 'w', encoding='utf-8') as f:
-        json.dump(state, f, ensure_ascii=False)
 
 
 class KaraokeHandler(http.server.SimpleHTTPRequestHandler):
@@ -100,6 +158,10 @@ class KaraokeHandler(http.server.SimpleHTTPRequestHandler):
         except Exception:
             return {}
 
+    def _sala_da_query(self, parsed):
+        qs = urllib.parse.parse_qs(parsed.query)
+        return qs.get('sala', [''])[0]
+
     def do_OPTIONS(self):
         self.send_response(204)
         self.send_header('Access-Control-Allow-Origin', '*')
@@ -123,65 +185,95 @@ class KaraokeHandler(http.server.SimpleHTTPRequestHandler):
             return super().do_GET()
         if parsed.path == '/api/state':
             with lock:
-                state = load_state()
+                _, room = get_room(self._sala_da_query(parsed))
+                state = {"queue": room['queue'], "current": room['current']}
             self._send_json(state)
             return
         if parsed.path == '/api/serverinfo':
             self._send_json({'ip': self.server.ip_detectado, 'port': self.server.server_port})
+            return
+        if parsed.path == '/api/catalogo':
+            with lock_catalogo:
+                self._send_json({'catalogo': catalogo})
             return
         return super().do_GET()
 
     def do_POST(self):
         parsed = urllib.parse.urlparse(self.path)
         body = self._read_json_body()
+        sala_param = body.get('sala') or self._sala_da_query(parsed)
 
         if parsed.path == '/api/queue/add':
             with lock:
-                state = load_state()
-                state['queue'].append({
+                _, room = get_room(sala_param)
+                room['queue'].append({
                     'id': body.get('id'),
                     'titulo': body.get('titulo') or 'Música',
                     'cantor': body.get('cantor') or 'Convidado(a)',
                     'addedAt': body.get('addedAt', 0),
                 })
-                save_state(state)
+                state = {"queue": room['queue'], "current": room['current']}
             self._send_json(state)
             return
 
         if parsed.path == '/api/queue/advance':
             with lock:
-                state = load_state()
-                if state['queue']:
-                    state['current'] = state['queue'].pop(0)
+                _, room = get_room(sala_param)
+                if room['queue']:
+                    room['current'] = room['queue'].pop(0)
                 else:
-                    state['current'] = None
-                save_state(state)
+                    room['current'] = None
+                state = {"queue": room['queue'], "current": room['current']}
             self._send_json(state)
             return
 
         if parsed.path == '/api/queue/remove':
             with lock:
-                state = load_state()
+                _, room = get_room(sala_param)
                 idx = body.get('index')
-                q = state['queue']
+                q = room['queue']
                 if isinstance(idx, int) and 0 <= idx < len(q):
                     q.pop(idx)
-                save_state(state)
+                state = {"queue": room['queue'], "current": room['current']}
             self._send_json(state)
             return
 
         if parsed.path == '/api/queue/move':
             with lock:
-                state = load_state()
+                _, room = get_room(sala_param)
                 idx = body.get('index')
                 direction = body.get('direction')
-                q = state['queue']
+                q = room['queue']
                 if isinstance(idx, int) and isinstance(direction, int):
                     new_idx = idx + direction
                     if 0 <= idx < len(q) and 0 <= new_idx < len(q):
                         q[idx], q[new_idx] = q[new_idx], q[idx]
-                save_state(state)
+                state = {"queue": room['queue'], "current": room['current']}
             self._send_json(state)
+            return
+
+        if parsed.path == '/api/catalogo/add':
+            with lock_catalogo:
+                catalogo.append({
+                    'id': body.get('id'),
+                    'titulo': body.get('titulo') or 'Música',
+                    'artista': body.get('artista') or '',
+                    'idioma': body.get('idioma') or 'Outro',
+                    'playlist': body.get('playlist') or '',
+                })
+                salvar_catalogo(catalogo)
+                resultado = list(catalogo)
+            self._send_json({'catalogo': resultado})
+            return
+
+        if parsed.path == '/api/catalogo/remove':
+            with lock_catalogo:
+                idx = body.get('index')
+                if isinstance(idx, int) and 0 <= idx < len(catalogo):
+                    catalogo.pop(idx)
+                salvar_catalogo(catalogo)
+                resultado = list(catalogo)
+            self._send_json({'catalogo': resultado})
             return
 
         self.send_response(404)
