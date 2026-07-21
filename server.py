@@ -107,8 +107,20 @@ class KaraokeHandler(http.server.SimpleHTTPRequestHandler):
         self.send_header('Access-Control-Allow-Headers', 'Content-Type')
         self.end_headers()
 
+    def list_directory(self, path):
+        # nunca mostra o conteudo de pastas (nem a raiz, nem .git, nem .venv, etc.)
+        self.send_error(403, "Listagem de pasta desativada")
+        return None
+
     def do_GET(self):
         parsed = urllib.parse.urlparse(self.path)
+        if parsed.path == '/' or parsed.path == '':
+            # serve o karaoke.html direto (200 OK) em vez de redirecionar (302) —
+            # servicos de hospedagem costumam checar a raiz "/" pra saber se o
+            # app esta saudavel, e um redirecionamento pode ser mal interpretado
+            # como "servico com problema", causando reinicios em loop.
+            self.path = '/karaoke.html'
+            return super().do_GET()
         if parsed.path == '/api/state':
             with lock:
                 state = load_state()
