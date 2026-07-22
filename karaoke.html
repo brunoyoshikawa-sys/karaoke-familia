@@ -359,7 +359,12 @@
       <button class="btn-secondary cat-tab" data-campo="lista" style="flex:1; padding:10px;">Sugestão</button>
     </div>
     <div class="row" id="conv-cat-busca-wrap" style="display:none;">
-      <input type="text" id="conv-cat-busca-texto" placeholder="Digite o nome da música ou do artista...">
+      <input type="text" id="conv-cat-busca-texto" placeholder="Digite o nome da música e/ou do artista...">
+      <button class="btn-secondary" id="btn-cat-buscar-youtube" style="white-space:nowrap;">Buscar no YouTube ↗</button>
+    </div>
+    <div class="row" id="conv-cat-busca-confirma" style="display:none; flex-direction:column; gap:6px;">
+      <input type="text" id="conv-cat-busca-link-encontrado" placeholder="Cole aqui o link que você achou no YouTube">
+      <button class="btn-primary" id="btn-cat-busca-confirmar">Confirmar e adicionar à fila</button>
     </div>
     <div class="row" id="conv-cat-lista-nav" style="display:none; align-items:center; justify-content:space-between;">
       <button class="btn-ghost" id="btn-lista-anterior">← Anterior</button>
@@ -2536,19 +2541,20 @@ const LIMITE_RESULTADOS_CATALOGO = 40;
 const ITENS_POR_PAGINA_LISTA = 25;
 
 async function initCatalogoConvidado(){
-  catalogoCache = await fetchCatalogo();
-
+  // liga os campos JA, antes mesmo do catalogo terminar de carregar — assim,
+  // se a pessoa digitar rapido (ou o catalogo demorar por causa da rede),
+  // nada do que ela fizer fica "perdido" esperando o carregamento terminar.
   document.querySelectorAll('.cat-tab').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       document.querySelectorAll('.cat-tab').forEach(b=>b.classList.remove('ativo'));
       btn.classList.add('ativo');
       catalogoCampoAtivo = btn.dataset.campo;
       document.getElementById('conv-cat-busca-wrap').style.display = catalogoCampoAtivo === 'busca' ? 'flex' : 'none';
+      document.getElementById('conv-cat-busca-confirma').style.display = 'none';
       document.getElementById('conv-cat-lista-nav').style.display = catalogoCampoAtivo === 'lista' ? 'flex' : 'none';
 
       if(catalogoCampoAtivo === 'busca'){
-        document.getElementById('conv-cat-musicas').innerHTML =
-          '<div class="palco-fila-vazia">Digite acima pra buscar.</div>';
+        document.getElementById('conv-cat-musicas').innerHTML = '';
       }else if(catalogoCampoAtivo === 'lista'){
         paginaListaAtual = 0;
         mostrarPaginaListaCompleta();
@@ -2556,8 +2562,40 @@ async function initCatalogoConvidado(){
     });
   });
 
-  document.getElementById('conv-cat-busca-texto').addEventListener('input', ()=>{
-    buscarNoCatalogoPorTexto(document.getElementById('conv-cat-busca-texto').value);
+  function abrirBuscaYoutube(){
+    const termo = document.getElementById('conv-cat-busca-texto').value.trim();
+    if(!termo){
+      alert('Digite o nome da música (e o artista, se souber) antes de buscar.');
+      return;
+    }
+    window.open('https://www.youtube.com/results?search_query=' + encodeURIComponent(termo + ' karaokê'), '_blank');
+    document.getElementById('conv-cat-busca-confirma').style.display = 'flex';
+  }
+
+  document.getElementById('btn-cat-buscar-youtube').addEventListener('click', abrirBuscaYoutube);
+  document.getElementById('conv-cat-busca-texto').addEventListener('keydown', (e)=>{
+    if(e.key === 'Enter') abrirBuscaYoutube();
+  });
+
+  document.getElementById('btn-cat-busca-confirmar').addEventListener('click', async ()=>{
+    const termo = document.getElementById('conv-cat-busca-texto').value.trim();
+    const linkInput = document.getElementById('conv-cat-busca-link-encontrado');
+    const id = extractYouTubeId(linkInput.value.trim());
+    if(!id){
+      alert('Cole um link válido do YouTube (ex: https://www.youtube.com/watch?v=XXXXXXXXXXX)');
+      return;
+    }
+    const cantor = document.getElementById('conv-cat-seu-nome').value.trim() || 'Convidado(a)';
+    const btn = document.getElementById('btn-cat-busca-confirmar');
+    const original = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Adicionado ✓';
+    await apiAdd({ id, titulo: termo, cantor, addedAt: Date.now() });
+    renderConvidado();
+    document.getElementById('conv-cat-busca-texto').value = '';
+    linkInput.value = '';
+    document.getElementById('conv-cat-busca-confirma').style.display = 'none';
+    setTimeout(()=>{ btn.disabled = false; btn.textContent = original; }, 1500);
   });
 
   document.getElementById('btn-lista-anterior').addEventListener('click', ()=>{
@@ -2566,6 +2604,14 @@ async function initCatalogoConvidado(){
   document.getElementById('btn-lista-proxima').addEventListener('click', ()=>{
     paginaListaAtual++; mostrarPaginaListaCompleta();
   });
+
+  catalogoCache = await fetchCatalogo();
+
+  // se a pessoa ja tinha trocado pra aba "Sugestão" enquanto o catalogo ainda
+  // carregava, mostra a lista agora que os dados chegaram.
+  if(catalogoCampoAtivo === 'lista'){
+    mostrarPaginaListaCompleta();
+  }
 }
 
 let listaOrdenadaPorArtista = null;
@@ -2623,20 +2669,6 @@ function pularParaLetra(letra){
   if(idx === -1) return;
   paginaListaAtual = Math.floor(idx / ITENS_POR_PAGINA_LISTA);
   mostrarPaginaListaCompleta();
-}
-
-function buscarNoCatalogoPorTexto(texto){
-  texto = texto.trim().toLowerCase();
-  if(texto.length < 2){
-    document.getElementById('conv-cat-musicas').innerHTML =
-      '<div class="palco-fila-vazia">Digite pelo menos 2 letras.</div>';
-    return;
-  }
-  const itens = catalogoCache.filter(item =>
-    (item.titulo || '').toLowerCase().includes(texto) ||
-    (item.artista || '').toLowerCase().includes(texto)
-  ).slice(0, LIMITE_RESULTADOS_CATALOGO);
-  renderizarListaCatalogo(itens);
 }
 
 function renderizarListaCatalogo(itens){
