@@ -300,7 +300,7 @@
 
   <div class="panel">
     <h2>Catálogo de sugestões (o que os convidados veem na lista deles)</h2>
-    <p style="color:var(--muted); font-size:13px; margin:-8px 0 12px;">Adicione ou remova músicas daqui pra controlar o que aparece na aba "Catálogo de sugestões" que os convidados veem ao escanear o QR code.</p>
+    <p style="color:var(--muted); font-size:13px; margin:-8px 0 12px;">Adicione músicas aqui pra elas aparecerem na aba "Catálogo de sugestões" que os convidados veem ao escanear o QR code.</p>
     <div class="row">
       <input type="text" id="cat-input-link" placeholder="Cole o link do YouTube">
     </div>
@@ -317,10 +317,6 @@
       <input type="text" id="cat-input-playlist" placeholder="Nome da lista (opcional, ex: Anos 80, Favoritas da família)">
       <button class="btn-primary" id="cat-btn-add">Adicionar ao catálogo</button>
     </div>
-    <div class="row">
-      <input type="text" id="cat-busca-admin" placeholder="Buscar no catálogo (nome ou artista)...">
-    </div>
-    <div id="cat-lista-admin" style="margin-top:14px; display:flex; flex-direction:column; gap:8px;"></div>
   </div>
 
   <div class="panel" id="painel-convidados">
@@ -2251,8 +2247,6 @@ function initCatalogoAdmin(){
     btn.disabled = true;
     btn.textContent = 'Buscando música...';
     const tituloReal = await fetchYouTubeTitle(id);
-    btn.disabled = false;
-    btn.textContent = original;
 
     await apiCatalogoAdd({
       id,
@@ -2264,75 +2258,8 @@ function initCatalogoAdmin(){
     linkInput.value = '';
     artistaInput.value = '';
     playlistInput.value = '';
-    renderCatalogoAdmin();
-  });
-
-  renderCatalogoAdmin();
-
-  document.getElementById('cat-busca-admin').addEventListener('input', ()=>{
-    renderCatalogoAdmin();
-  });
-}
-
-const LIMITE_ADMIN_CATALOGO = 50;
-
-async function renderCatalogoAdmin(){
-  const listaCompleta = await fetchCatalogo();
-  const termo = (document.getElementById('cat-busca-admin').value || '').trim().toLowerCase();
-  const el = document.getElementById('cat-lista-admin');
-  el.innerHTML = '';
-
-  if(listaCompleta.length === 0){
-    el.innerHTML = '<div class="palco-fila-vazia">Catálogo vazio ainda.</div>';
-    return;
-  }
-
-  let lista = listaCompleta;
-  let indices = listaCompleta.map((_, i) => i);
-  if(termo){
-    const filtrado = [];
-    listaCompleta.forEach((item, i)=>{
-      if((item.titulo||'').toLowerCase().includes(termo) || (item.artista||'').toLowerCase().includes(termo)){
-        filtrado.push(i);
-      }
-    });
-    indices = filtrado;
-  }else{
-    // sem busca: mostra so as primeiras N pra nao travar a tela com milhares de itens
-    indices = indices.slice(0, LIMITE_ADMIN_CATALOGO);
-  }
-
-  if(indices.length === 0){
-    el.innerHTML = '<div class="palco-fila-vazia">Nada encontrado.</div>';
-    return;
-  }
-
-  const aviso = document.createElement('div');
-  aviso.className = 'palco-fila-mais';
-  aviso.style.textAlign = 'left';
-  aviso.textContent = termo
-    ? `${indices.length} resultado(s) para "${termo}" (de ${listaCompleta.length} no total)`
-    : `Mostrando as primeiras ${indices.length} de ${listaCompleta.length} — use a busca acima pra achar outras`;
-  el.appendChild(aviso);
-
-  indices.forEach(i=>{
-    const item = listaCompleta[i];
-    const div = document.createElement('div');
-    div.className = 'cat-item';
-    div.innerHTML = `
-      <div class="info">
-        <div class="titulo">${item.titulo}</div>
-        <div class="meta"><b>${item.idioma || ''}</b> ${item.artista ? '· ' + item.artista : ''} ${item.playlist ? '· 📁 ' + item.playlist : ''} ${!item.id ? '· <span style="color:var(--muted);">sem link</span>' : ''}</div>
-      </div>
-      <button class="btn-ghost btn-danger" data-i="${i}">✕</button>
-    `;
-    el.appendChild(div);
-  });
-  el.querySelectorAll('button').forEach(btn=>{
-    btn.addEventListener('click', async ()=>{
-      await apiCatalogoRemove(parseInt(btn.dataset.i));
-      renderCatalogoAdmin();
-    });
+    btn.textContent = 'Adicionado ✓';
+    setTimeout(()=>{ btn.disabled = false; btn.textContent = original; }, 1500);
   });
 }
 
