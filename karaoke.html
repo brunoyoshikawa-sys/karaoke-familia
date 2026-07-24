@@ -293,8 +293,14 @@
     <button class="btn-secondary btn-danger" id="btn-pular">Pular ⏭</button>
   </div>
 
+  <div class="panel" style="flex:1; display:flex; flex-direction:column; min-height:0;">
+    <h2>Próximas da fila</h2>
+    <div id="fila"></div>
+  </div>
+
   <div class="panel">
-    <h2>Catálogo de favoritas (só você gerencia — os convidados escolhem daqui)</h2>
+    <h2>Catálogo de sugestões (o que os convidados veem na lista deles)</h2>
+    <p style="color:var(--muted); font-size:13px; margin:-8px 0 12px;">Adicione ou remova músicas daqui pra controlar o que aparece na aba "Catálogo de sugestões" que os convidados veem ao escanear o QR code.</p>
     <div class="row">
       <input type="text" id="cat-input-link" placeholder="Cole o link do YouTube">
     </div>
@@ -315,11 +321,6 @@
       <input type="text" id="cat-busca-admin" placeholder="Buscar no catálogo (nome ou artista)...">
     </div>
     <div id="cat-lista-admin" style="margin-top:14px; display:flex; flex-direction:column; gap:8px;"></div>
-  </div>
-
-  <div class="panel" style="flex:1; display:flex; flex-direction:column; min-height:0;">
-    <h2>Próximas da fila</h2>
-    <div id="fila"></div>
   </div>
 
   <div class="panel" id="painel-convidados">
@@ -350,23 +351,12 @@
   <h1>KARAOKÊ <span>PEDIR MÚSICA</span></h1>
 
   <div class="panel">
-    <h2>Catálogo de favoritas</h2>
+    <h2>Catálogo de sugestões</h2>
+    <p style="color:var(--muted); font-size:13px; margin:-8px 0 12px;">Veja se sua música está na lista abaixo. Se não estiver, use o campo "Ou cole o link direto" mais embaixo.</p>
     <div class="row">
       <input type="text" id="conv-cat-seu-nome" placeholder="Seu nome (usado ao adicionar músicas do catálogo)">
     </div>
-    <div class="choice-row" style="gap:8px; margin-bottom:10px;">
-      <button class="btn-secondary cat-tab" data-campo="busca" style="flex:1; padding:10px;">Buscar</button>
-      <button class="btn-secondary cat-tab" data-campo="lista" style="flex:1; padding:10px;">Sugestão</button>
-    </div>
-    <div class="row" id="conv-cat-busca-wrap" style="display:none;">
-      <input type="text" id="conv-cat-busca-texto" placeholder="Digite o nome da música e/ou do artista...">
-      <button class="btn-secondary" id="btn-cat-buscar-youtube" style="white-space:nowrap;">Buscar no YouTube ↗</button>
-    </div>
-    <div class="row" id="conv-cat-busca-confirma" style="display:none; flex-direction:column; gap:6px;">
-      <input type="text" id="conv-cat-busca-link-encontrado" placeholder="Cole aqui o link que você achou no YouTube">
-      <button class="btn-primary" id="btn-cat-busca-confirmar">Confirmar e adicionar à fila</button>
-    </div>
-    <div class="row" id="conv-cat-lista-nav" style="display:none; align-items:center; justify-content:space-between;">
+    <div class="row" id="conv-cat-lista-nav" style="align-items:center; justify-content:space-between;">
       <button class="btn-ghost" id="btn-lista-anterior">← Anterior</button>
       <span id="conv-cat-lista-pagina" style="color:var(--muted); font-size:13px;"></span>
       <button class="btn-ghost" id="btn-lista-proxima">Próxima →</button>
@@ -2541,63 +2531,6 @@ const LIMITE_RESULTADOS_CATALOGO = 40;
 const ITENS_POR_PAGINA_LISTA = 25;
 
 async function initCatalogoConvidado(){
-  // liga os campos JA, antes mesmo do catalogo terminar de carregar — assim,
-  // se a pessoa digitar rapido (ou o catalogo demorar por causa da rede),
-  // nada do que ela fizer fica "perdido" esperando o carregamento terminar.
-  document.querySelectorAll('.cat-tab').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      document.querySelectorAll('.cat-tab').forEach(b=>b.classList.remove('ativo'));
-      btn.classList.add('ativo');
-      catalogoCampoAtivo = btn.dataset.campo;
-      document.getElementById('conv-cat-busca-wrap').style.display = catalogoCampoAtivo === 'busca' ? 'flex' : 'none';
-      document.getElementById('conv-cat-busca-confirma').style.display = 'none';
-      document.getElementById('conv-cat-lista-nav').style.display = catalogoCampoAtivo === 'lista' ? 'flex' : 'none';
-
-      if(catalogoCampoAtivo === 'busca'){
-        document.getElementById('conv-cat-musicas').innerHTML = '';
-      }else if(catalogoCampoAtivo === 'lista'){
-        paginaListaAtual = 0;
-        mostrarPaginaListaCompleta();
-      }
-    });
-  });
-
-  function abrirBuscaYoutube(){
-    const termo = document.getElementById('conv-cat-busca-texto').value.trim();
-    if(!termo){
-      alert('Digite o nome da música (e o artista, se souber) antes de buscar.');
-      return;
-    }
-    window.open('https://www.youtube.com/results?search_query=' + encodeURIComponent(termo + ' karaokê'), '_blank');
-    document.getElementById('conv-cat-busca-confirma').style.display = 'flex';
-  }
-
-  document.getElementById('btn-cat-buscar-youtube').addEventListener('click', abrirBuscaYoutube);
-  document.getElementById('conv-cat-busca-texto').addEventListener('keydown', (e)=>{
-    if(e.key === 'Enter') abrirBuscaYoutube();
-  });
-
-  document.getElementById('btn-cat-busca-confirmar').addEventListener('click', async ()=>{
-    const termo = document.getElementById('conv-cat-busca-texto').value.trim();
-    const linkInput = document.getElementById('conv-cat-busca-link-encontrado');
-    const id = extractYouTubeId(linkInput.value.trim());
-    if(!id){
-      alert('Cole um link válido do YouTube (ex: https://www.youtube.com/watch?v=XXXXXXXXXXX)');
-      return;
-    }
-    const cantor = document.getElementById('conv-cat-seu-nome').value.trim() || 'Convidado(a)';
-    const btn = document.getElementById('btn-cat-busca-confirmar');
-    const original = btn.textContent;
-    btn.disabled = true;
-    btn.textContent = 'Adicionado ✓';
-    await apiAdd({ id, titulo: termo, cantor, addedAt: Date.now() });
-    renderConvidado();
-    document.getElementById('conv-cat-busca-texto').value = '';
-    linkInput.value = '';
-    document.getElementById('conv-cat-busca-confirma').style.display = 'none';
-    setTimeout(()=>{ btn.disabled = false; btn.textContent = original; }, 1500);
-  });
-
   document.getElementById('btn-lista-anterior').addEventListener('click', ()=>{
     if(paginaListaAtual > 0){ paginaListaAtual--; mostrarPaginaListaCompleta(); }
   });
@@ -2605,13 +2538,9 @@ async function initCatalogoConvidado(){
     paginaListaAtual++; mostrarPaginaListaCompleta();
   });
 
+  document.getElementById('conv-cat-musicas').innerHTML = '<div class="palco-fila-vazia">Carregando sugestões...</div>';
   catalogoCache = await fetchCatalogo();
-
-  // se a pessoa ja tinha trocado pra aba "Sugestão" enquanto o catalogo ainda
-  // carregava, mostra a lista agora que os dados chegaram.
-  if(catalogoCampoAtivo === 'lista'){
-    mostrarPaginaListaCompleta();
-  }
+  mostrarPaginaListaCompleta();
 }
 
 let listaOrdenadaPorArtista = null;
