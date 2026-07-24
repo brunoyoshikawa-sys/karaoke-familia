@@ -143,6 +143,25 @@
   .cat-item .meta{color:var(--muted); font-size:12px;}
   .cat-item .meta b{color:var(--neon-cyan);}
   .cat-tab.ativo{border-color:var(--neon-pink); color:var(--neon-pink);}
+
+  .conv-tabs-bar{
+    display:flex; gap:8px; position:sticky; top:0; z-index:20; background:var(--bg);
+    padding:10px 0; margin-bottom:4px;
+  }
+  .conv-tab{
+    flex:1; font-family:'Inter'; font-weight:600; font-size:14px; padding:12px;
+    border-radius:10px; border:1px solid var(--line); background:var(--bg-raised); color:var(--muted);
+    cursor:pointer; transition:border-color .15s ease, color .15s ease;
+  }
+  .conv-tab.ativo{border-color:var(--neon-pink); color:var(--neon-pink);}
+
+  .fila-item.minha-musica{border-color:var(--neon-pink); background:rgba(255,46,136,0.08);}
+  .fila-item.minha-musica .cantor::after{content:" · é você! 🎤"; color:var(--neon-pink); font-weight:600;}
+  .fila-item.destaque-recente{animation:flashDestaque 1.6s ease;}
+  @keyframes flashDestaque{
+    0%{background:rgba(46,230,255,0.25);}
+    100%{background:transparent;}
+  }
   .btn-indice-az{
     width:22px; height:20px; font-size:11px; font-weight:700; padding:0; border-radius:4px;
     border:none; background:transparent; color:var(--muted); cursor:pointer; font-family:'Inter';
@@ -347,46 +366,57 @@
   <h1>KARAOKÊ <span>PEDIR MÚSICA</span></h1>
 
   <div class="panel">
-    <h2>Catálogo de sugestões</h2>
-    <p style="color:var(--muted); font-size:13px; margin:-8px 0 12px;">Veja se sua música está na lista abaixo. Se não estiver, use o campo "Ou cole o link direto" mais embaixo.</p>
-    <div class="row">
-      <input type="text" id="conv-cat-seu-nome" placeholder="Seu nome (usado ao adicionar músicas do catálogo)">
-    </div>
-    <div class="row" id="conv-cat-lista-nav" style="align-items:center; justify-content:space-between;">
-      <button class="btn-ghost" id="btn-lista-anterior">← Anterior</button>
-      <span id="conv-cat-lista-pagina" style="color:var(--muted); font-size:13px;"></span>
-      <button class="btn-ghost" id="btn-lista-proxima">Próxima →</button>
-    </div>
-    <div style="display:flex; gap:6px; align-items:flex-start;">
-      <div id="conv-cat-musicas" style="display:flex; flex-direction:column; gap:8px; flex:1; min-width:0;"></div>
-      <div id="conv-cat-indice-az" style="display:flex; flex-direction:column; flex-shrink:0;"></div>
+    <div class="row" style="margin-bottom:0;">
+      <input type="text" id="conv-seu-nome-unico" placeholder="Seu nome">
     </div>
   </div>
 
-  <div class="panel">
-    <h2>Ou cole o link direto</h2>
-    <div class="row">
-      <input type="text" id="input-link-conv" placeholder="Cole o link do YouTube aqui (ex: https://youtu.be/...)">
+  <div class="conv-tabs-bar">
+    <button class="conv-tab ativo" data-tab="adicionar">🎤 Adicionar música</button>
+    <button class="conv-tab" data-tab="fila">📋 Fila</button>
+  </div>
+
+  <div id="conv-secao-adicionar">
+    <div class="panel">
+      <h2>Buscar no YouTube</h2>
+      <div class="row">
+        <input type="text" id="input-link-conv" placeholder="Cole o link do YouTube aqui (ex: https://youtu.be/...)">
+      </div>
+      <div class="row">
+        <button class="btn-primary" id="btn-add-conv" style="width:100%;">Adicionar à fila</button>
+      </div>
+      <div class="row">
+        <input type="text" id="input-busca-conv" placeholder="Ou pesquise: digite o nome da música">
+        <button class="btn-secondary" id="btn-busca-conv">Buscar no YouTube ↗</button>
+      </div>
     </div>
-    <div class="row">
-      <input type="text" id="input-cantor-conv" placeholder="Seu nome">
-      <button class="btn-primary" id="btn-add-conv">Adicionar à fila</button>
-    </div>
-    <div class="row">
-      <input type="text" id="input-busca-conv" placeholder="Ou pesquise: digite o nome da música">
-      <button class="btn-secondary" id="btn-busca-conv">Buscar no YouTube ↗</button>
+
+    <div class="panel">
+      <h2>Catálogo de sugestões</h2>
+      <p style="color:var(--muted); font-size:13px; margin:-8px 0 12px;">Não achou no YouTube? Veja se sua música está na lista abaixo.</p>
+      <div class="row" id="conv-cat-lista-nav" style="align-items:center; justify-content:space-between;">
+        <button class="btn-ghost" id="btn-lista-anterior">← Anterior</button>
+        <span id="conv-cat-lista-pagina" style="color:var(--muted); font-size:13px;"></span>
+        <button class="btn-ghost" id="btn-lista-proxima">Próxima →</button>
+      </div>
+      <div style="display:flex; gap:6px; align-items:flex-start;">
+        <div id="conv-cat-musicas" style="display:flex; flex-direction:column; gap:8px; flex:1; min-width:0;"></div>
+        <div id="conv-cat-indice-az" style="display:flex; flex-direction:column; flex-shrink:0;"></div>
+      </div>
     </div>
   </div>
 
-  <div class="panel">
-    <h2 style="margin-bottom:4px;">Tocando agora</h2>
-    <div class="titulo" id="agora-titulo-conv">—</div>
-    <div class="cantor" id="agora-cantor-conv"></div>
-  </div>
+  <div id="conv-secao-fila" class="hidden">
+    <div class="panel">
+      <h2 style="margin-bottom:4px;">Tocando agora</h2>
+      <div class="titulo" id="agora-titulo-conv">—</div>
+      <div class="cantor" id="agora-cantor-conv"></div>
+    </div>
 
-  <div class="panel" style="flex:1; display:flex; flex-direction:column; min-height:0;">
-    <h2>Próximas da fila</h2>
-    <div id="fila-conv"></div>
+    <div class="panel" style="flex:1; display:flex; flex-direction:column; min-height:0;">
+      <h2>Próximas da fila</h2>
+      <div id="fila-conv"></div>
+    </div>
   </div>
 </div>
 
@@ -2431,9 +2461,23 @@ function initPalco(){
 /* ================= CONVIDADO ================= */
 function initConvidado(){
   document.title = 'Karaokê — Pedir Música';
+
+  // lembra o nome do convidado entre visitas, pra nao precisar digitar de novo
+  const nomeInput = document.getElementById('conv-seu-nome-unico');
+  const nomeSalvo = localStorage.getItem('karaokeNomeConvidado');
+  if(nomeSalvo) nomeInput.value = nomeSalvo;
+  nomeInput.addEventListener('input', ()=>{
+    localStorage.setItem('karaokeNomeConvidado', nomeInput.value.trim());
+  });
+
+  // abas "Adicionar musica" / "Fila"
+  document.querySelectorAll('.conv-tab').forEach(btn=>{
+    btn.addEventListener('click', ()=> mudarAbaConvidado(btn.dataset.tab));
+  });
+
   document.getElementById('btn-add-conv').addEventListener('click', addToQueueConv);
   document.getElementById('input-link-conv').addEventListener('keydown', (e)=>{ if(e.key==='Enter') addToQueueConv(); });
-  document.getElementById('input-cantor-conv').addEventListener('keydown', (e)=>{ if(e.key==='Enter') addToQueueConv(); });
+  document.getElementById('conv-seu-nome-unico').addEventListener('keydown', (e)=>{ if(e.key==='Enter') addToQueueConv(); });
 
   document.getElementById('btn-busca-conv').addEventListener('click', ()=>{
     const termo = document.getElementById('input-busca-conv').value.trim();
@@ -2448,6 +2492,26 @@ function initConvidado(){
   renderConvidado();
   setInterval(renderConvidado, 1500); // sincroniza com o que outros dispositivos adicionaram
   initCatalogoConvidado();
+}
+
+function mudarAbaConvidado(aba){
+  document.querySelectorAll('.conv-tab').forEach(b=>{
+    b.classList.toggle('ativo', b.dataset.tab === aba);
+  });
+  document.getElementById('conv-secao-adicionar').classList.toggle('hidden', aba !== 'adicionar');
+  document.getElementById('conv-secao-fila').classList.toggle('hidden', aba !== 'fila');
+}
+
+function irParaFilaEDestacar(idAdicionado){
+  mudarAbaConvidado('fila');
+  setTimeout(()=>{
+    const item = document.querySelector(`.fila-item[data-song-id="${idAdicionado}"]`);
+    if(item){
+      item.scrollIntoView({behavior:'smooth', block:'center'});
+      item.classList.add('destaque-recente');
+      setTimeout(()=> item.classList.remove('destaque-recente'), 1700);
+    }
+  }, 150);
 }
 
 /* ---- Navegação do catálogo (Convidado) ---- */
@@ -2571,13 +2635,14 @@ function renderizarListaCatalogo(itens){
   musicasEl.querySelectorAll('.btn-add-catalogo').forEach((btn, i)=>{
     btn.addEventListener('click', async ()=>{
       const item = itens[i];
-      const cantor = document.getElementById('conv-cat-seu-nome').value.trim() || 'Convidado(a)';
+      const cantor = document.getElementById('conv-seu-nome-unico').value.trim() || 'Convidado(a)';
       const original = btn.textContent;
       btn.disabled = true;
       btn.textContent = 'Adicionado ✓';
       await apiAdd({ id: item.id, titulo: item.titulo, cantor, addedAt: Date.now() });
-      renderConvidado();
+      await renderConvidado();
       setTimeout(()=>{ btn.disabled = false; btn.textContent = original; }, 1500);
+      irParaFilaEDestacar(item.id);
     });
   });
 
@@ -2600,19 +2665,20 @@ function renderizarListaCatalogo(itens){
         alert('Cole um link válido do YouTube (ex: https://www.youtube.com/watch?v=XXXXXXXXXXX)');
         return;
       }
-      const cantor = document.getElementById('conv-cat-seu-nome').value.trim() || 'Convidado(a)';
+      const cantor = document.getElementById('conv-seu-nome-unico').value.trim() || 'Convidado(a)';
       const original = btn.textContent;
       btn.disabled = true;
       btn.textContent = 'Adicionado ✓';
       await apiAdd({ id, titulo: item.titulo, cantor, addedAt: Date.now() });
-      renderConvidado();
+      await renderConvidado();
+      irParaFilaEDestacar(id);
     });
   });
 }
 
 async function addToQueueConv(){
   const linkInput = document.getElementById('input-link-conv');
-  const cantorInput = document.getElementById('input-cantor-conv');
+  const cantorInput = document.getElementById('conv-seu-nome-unico');
   const btn = document.getElementById('btn-add-conv');
   const id = extractYouTubeId(linkInput.value.trim());
   if(!id){
@@ -2633,11 +2699,10 @@ async function addToQueueConv(){
     addedAt: Date.now()
   });
   linkInput.value = '';
-  cantorInput.value = '';
-  renderConvidado();
+  await renderConvidado();
   btn.disabled = false;
-  btn.textContent = 'Adicionado ✓';
-  setTimeout(()=>btn.textContent = original, 1500);
+  btn.textContent = original;
+  irParaFilaEDestacar(id);
 }
 
 async function renderConvidado(){
@@ -2659,9 +2724,12 @@ async function renderConvidado(){
     filaEl.innerHTML = '<div class="fila-vazia-msg">A fila está vazia. Adicione uma música acima ☝️</div>';
     return;
   }
+  const meuNome = document.getElementById('conv-seu-nome-unico').value.trim();
   state.queue.forEach((item, i)=>{
     const div = document.createElement('div');
-    div.className = 'fila-item';
+    const ehMinha = meuNome && item.cantor === meuNome;
+    div.className = 'fila-item' + (ehMinha ? ' minha-musica' : '');
+    div.dataset.songId = item.id;
     div.innerHTML = `
       <div class="pos">${i+1}</div>
       <div class="info">
