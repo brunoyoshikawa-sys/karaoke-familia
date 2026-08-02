@@ -142,6 +142,17 @@
   .cat-item .titulo{font-weight:600; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
   .cat-item .meta{color:var(--muted); font-size:12px;}
   .cat-item .meta b{color:var(--neon-cyan);}
+  .yt-resultado{
+    display:flex; gap:10px; align-items:center; background:#0e0d17; border:1px solid var(--line);
+    border-radius:10px; padding:8px; cursor:pointer; transition:border-color .15s ease;
+  }
+  .yt-resultado:hover{border-color:var(--neon-cyan);}
+  .yt-resultado img{width:64px; height:48px; object-fit:cover; border-radius:6px; flex-shrink:0; background:#000;}
+  .yt-resultado .info{flex:1; min-width:0;}
+  .yt-resultado .titulo{font-size:13px; font-weight:600; color:var(--text); line-height:1.3;
+    display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;}
+  .yt-resultado .canal{font-size:11px; color:var(--muted); margin-top:2px;}
+  .yt-resultado button{flex-shrink:0; padding:8px 12px; font-size:12px;}
   .cat-tab.ativo{border-color:var(--neon-pink); color:var(--neon-pink);}
 
   .conv-tabs-bar{
@@ -378,17 +389,19 @@
 
   <div id="conv-secao-adicionar">
     <div class="panel">
-      <h2>Buscar no YouTube</h2>
+      <h2>Buscar música</h2>
       <div class="row">
-        <input type="text" id="input-link-conv" placeholder="Cole o link do YouTube aqui (ex: https://youtu.be/...)">
+        <input type="text" id="conv-busca-yt-texto" placeholder="Digite o nome da música e/ou o artista">
+        <button class="btn-primary" id="btn-conv-busca-yt">Buscar</button>
       </div>
-      <div class="row">
-        <button class="btn-primary" id="btn-add-conv" style="width:100%;">Adicionar à fila</button>
-      </div>
-      <div class="row">
-        <input type="text" id="input-busca-conv" placeholder="Ou pesquise: digite o nome da música">
-        <button class="btn-secondary" id="btn-busca-conv">Buscar no YouTube ↗</button>
-      </div>
+      <div id="conv-busca-yt-resultados" style="display:flex; flex-direction:column; gap:8px;"></div>
+      <details style="margin-top:10px;">
+        <summary style="color:var(--muted); font-size:13px; cursor:pointer;">Já tem o link do YouTube? Cole aqui</summary>
+        <div class="row" style="margin-top:10px;">
+          <input type="text" id="input-link-conv" placeholder="Cole o link do YouTube aqui (ex: https://youtu.be/...)">
+          <button class="btn-secondary" id="btn-add-conv">Adicionar</button>
+        </div>
+      </details>
     </div>
 
     <div class="panel">
@@ -2479,19 +2492,78 @@ function initConvidado(){
   document.getElementById('input-link-conv').addEventListener('keydown', (e)=>{ if(e.key==='Enter') addToQueueConv(); });
   document.getElementById('conv-seu-nome-unico').addEventListener('keydown', (e)=>{ if(e.key==='Enter') addToQueueConv(); });
 
-  document.getElementById('btn-busca-conv').addEventListener('click', ()=>{
-    const termo = document.getElementById('input-busca-conv').value.trim();
-    if(!termo) return;
-    const url = 'https://www.youtube.com/results?search_query=' + encodeURIComponent(termo + ' karaokê letra');
-    window.open(url, '_blank');
-  });
-  document.getElementById('input-busca-conv').addEventListener('keydown', (e)=>{
-    if(e.key==='Enter') document.getElementById('btn-busca-conv').click();
+  document.getElementById('btn-conv-busca-yt').addEventListener('click', buscarMusicaInline);
+  document.getElementById('conv-busca-yt-texto').addEventListener('keydown', (e)=>{
+    if(e.key==='Enter') buscarMusicaInline();
   });
 
   renderConvidado();
   setInterval(renderConvidado, 1500); // sincroniza com o que outros dispositivos adicionaram
   initCatalogoConvidado();
+}
+
+async function buscarMusicaInline(){
+  const input = document.getElementById('conv-busca-yt-texto');
+  const termo = input.value.trim();
+  const btn = document.getElementById('btn-conv-busca-yt');
+  const resultadosEl = document.getElementById('conv-busca-yt-resultados');
+  if(!termo) return;
+
+  const original = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Buscando...';
+  resultadosEl.innerHTML = '';
+
+  try{
+    const r = await fetch('/api/youtube-search?q=' + encodeURIComponent(termo + ' karaokê'));
+    const data = await r.json();
+
+    if(data.erro === 'sem_chave'){
+      // servidor sem chave da API configurada — cai no modo antigo (abre uma aba de busca)
+      window.open('https://www.youtube.com/results?search_query=' + encodeURIComponent(termo + ' karaokê letra'), '_blank');
+      resultadosEl.innerHTML = '<div class="palco-fila-vazia">Abrimos a busca numa aba — copie o link de lá e cole em "Já tem o link do YouTube?" abaixo.</div>';
+      return;
+    }
+
+    const resultados = data.resultados || [];
+    if(resultados.length === 0){
+      resultadosEl.innerHTML = '<div class="palco-fila-vazia">Nada encontrado. Tente outro termo, ou cole o link direto abaixo.</div>';
+      return;
+    }
+
+    resultados.forEach((item, i)=>{
+      const div = document.createElement('div');
+      div.className = 'yt-resultado';
+      div.innerHTML = `
+        <img src="${item.thumbnail}" alt="">
+        <div class="info">
+          <div class="titulo">${item.titulo}</div>
+          <div class="canal">${item.canal}</div>
+        </div>
+        <button class="btn-primary" data-i="${i}">É essa!</button>
+      `;
+      resultadosEl.appendChild(div);
+    });
+
+    resultadosEl.querySelectorAll('button').forEach(botao=>{
+      botao.addEventListener('click', async ()=>{
+        const item = resultados[parseInt(botao.dataset.i)];
+        const cantor = document.getElementById('conv-seu-nome-unico').value.trim() || 'Convidado(a)';
+        botao.disabled = true;
+        botao.textContent = 'Adicionado ✓';
+        await apiAdd({ id: item.id, titulo: item.titulo, cantor, addedAt: Date.now() });
+        await renderConvidado();
+        irParaFilaEDestacar(item.id);
+        input.value = '';
+        resultadosEl.innerHTML = '';
+      });
+    });
+  }catch(e){
+    resultadosEl.innerHTML = '<div class="palco-fila-vazia">Não consegui buscar agora. Tente de novo, ou cole o link direto abaixo.</div>';
+  }finally{
+    btn.disabled = false;
+    btn.textContent = original;
+  }
 }
 
 function mudarAbaConvidado(aba){

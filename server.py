@@ -26,6 +26,7 @@ import sys
 import threading
 import time
 import urllib.parse
+import urllib.request
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 CATALOGO_FILE = os.path.join(BASE_DIR, 'catalogo.json')
@@ -33,6 +34,49 @@ CATALOGO_INICIAL_FILE = os.path.join(BASE_DIR, 'catalogo_inicial.json')
 
 lock = threading.Lock()
 lock_catalogo = threading.Lock()
+
+# Chave da API do YouTube (opcional) — configure como variavel de ambiente
+# YOUTUBE_API_KEY no Render (ou no seu terminal, se for rodar local) pra
+# habilitar a busca de musicas direto dentro do app, sem precisar abrir
+# o YouTube numa aba separada. Sem a chave, o app cai automaticamente
+# no modo antigo (abre uma aba de busca).
+YOUTUBE_API_KEY = os.environ.get('YOUTUBE_API_KEY', '').strip()
+
+
+def buscar_youtube(query, max_results=8):
+    if not YOUTUBE_API_KEY:
+        return None
+    params = urllib.parse.urlencode({
+        'part': 'snippet',
+        'type': 'video',
+        'maxResults': max_results,
+        'q': query,
+        'key': YOUTUBE_API_KEY,
+        'safeSearch': 'none',
+    })
+    url = 'https://www.googleapis.com/youtube/v3/search?' + params
+    try:
+        with urllib.request.urlopen(url, timeout=8) as resp:
+            data = json.loads(resp.read().decode('utf-8'))
+    except Exception as e:
+        print('Erro ao buscar no YouTube:', e)
+        return []
+
+    resultados = []
+    for item in data.get('items', []):
+        vid = (item.get('id') or {}).get('videoId')
+        if not vid:
+            continue
+        snippet = item.get('snippet', {})
+        thumbs = snippet.get('thumbnails', {})
+        thumb = (thumbs.get('default') or thumbs.get('medium') or {}).get('url', '')
+        resultados.append({
+            'id': vid,
+            'titulo': snippet.get('title', ''),
+            'canal': snippet.get('channelTitle', ''),
+            'thumbnail': thumb,
+        })
+    return resultados
 
 # Cada "sala" tem sua propria fila, isolada das outras — assim, como a URL
 # agora e publica, duas pessoas diferentes abrindo o karaokê nao acabam
@@ -195,6 +239,18 @@ class KaraokeHandler(http.server.SimpleHTTPRequestHandler):
         if parsed.path == '/api/catalogo':
             with lock_catalogo:
                 self._send_json({'catalogo': catalogo})
+            return
+        if parsed.path == '/api/youtube-search':
+            qs = urllib.parse.parse_qs(parsed.query)
+            query = (qs.get('q', ['']) or [''])[0].strip()
+            if not query:
+                self._send_json({'erro': 'faltou o termo de busca'}, status=400)
+                return
+            if not YOUTUBE_API_KEY:
+                self._send_json({'erro': 'sem_chave'})
+                return
+            resultados = buscar_youtube(query)
+            self._send_json({'resultados': resultados})
             return
         return super().do_GET()
 
