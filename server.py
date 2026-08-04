@@ -25,6 +25,7 @@ import socket
 import sys
 import threading
 import time
+import unicodedata
 import urllib.parse
 import urllib.request
 
@@ -43,24 +44,34 @@ lock_catalogo = threading.Lock()
 YOUTUBE_API_KEY = os.environ.get('YOUTUBE_API_KEY', '').strip()
 
 
-def buscar_youtube(query, max_results=20):
+def remover_acentos(texto):
+    nfkd = unicodedata.normalize('NFD', texto)
+    return ''.join(c for c in nfkd if not unicodedata.combining(c))
+
+
+def buscar_youtube(query, max_results=20, page_token=None):
     if not YOUTUBE_API_KEY:
         return None
-    params = urllib.parse.urlencode({
+    params_dict = {
         'part': 'snippet',
         'type': 'video',
         'maxResults': max_results,
         'q': query,
         'key': YOUTUBE_API_KEY,
         'safeSearch': 'none',
-    })
+    }
+    if page_token:
+        params_dict['pageToken'] = page_token
+    params = urllib.parse.urlencode(params_dict)
     url = 'https://www.googleapis.com/youtube/v3/search?' + params
     try:
         with urllib.request.urlopen(url, timeout=8) as resp:
             data = json.loads(resp.read().decode('utf-8'))
     except Exception as e:
         print('Erro ao buscar no YouTube:', e)
-        return []
+        return {'resultados': [], 'proximaPagina': None}
+
+    proxima_pagina = data.get('nextPageToken')
 
     resultados = []
     ids_encontrados = []
@@ -106,8 +117,23 @@ def buscar_youtube(query, max_results=20):
         titulo = (r['titulo'] or '').lower()
         return 'karaokê' not in titulo and 'karaoke' not in titulo
 
-    resultados.sort(key=lambda r: (nivel_risco(r), nao_menciona_karaoke(r), -r['visualizacoes']))
-    return resultados
+    # termos de relevancia = palavras da busca digitada, ignorando "karaoke"/"karaokê"
+    # (isso so indica o formato desejado, nao faz parte do nome da musica em si) e
+    # palavras muito curtas (preposicoes etc.)
+    termos_busca = [
+        remover_acentos(p.lower()) for p in query.split()
+        if len(p) > 2 and remover_acentos(p.lower()) != 'karaoke'
+    ]
+
+    def relevancia(r):
+        if not termos_busca:
+            return 1.0
+        titulo_norm = remover_acentos((r['titulo'] or '').lower())
+        encontrados = sum(1 for t in termos_busca if t in titulo_norm)
+        return encontrados / len(termos_busca)
+
+    resultados.sort(key=lambda r: (nivel_risco(r), -relevancia(r), nao_menciona_karaoke(r), -r['visualizacoes']))
+    return {'resultados': resultados, 'proximaPagina': proxima_pagina}
 
 
 def buscar_detalhes_videos(ids):
@@ -318,14 +344,15 @@ class KaraokeHandler(http.server.SimpleHTTPRequestHandler):
         if parsed.path == '/api/youtube-search':
             qs = urllib.parse.parse_qs(parsed.query)
             query = (qs.get('q', ['']) or [''])[0].strip()
+            page_token = (qs.get('pageToken', ['']) or [''])[0].strip() or None
             if not query:
                 self._send_json({'erro': 'faltou o termo de busca'}, status=400)
                 return
             if not YOUTUBE_API_KEY:
                 self._send_json({'erro': 'sem_chave'})
                 return
-            resultados = buscar_youtube(query)
-            self._send_json({'resultados': resultados})
+            resultado = buscar_youtube(query, page_token=page_token)
+            self._send_json(resultado)
             return
         return super().do_GET()
 
