@@ -77,30 +77,48 @@ def buscar_youtube(query, max_results=8):
             'canal': snippet.get('channelTitle', ''),
             'thumbnail': thumb,
             'embeddable': True,   # valor padrao otimista, ajustado abaixo se a API disser o contrario
+            'licenciado': False,
             'visualizacoes': 0,
         })
         ids_encontrados.append(vid)
 
     # segunda chamada (barata: so 1 unidade de cota, independente de quantos IDs) pra
-    # saber quais videos realmente permitem incorporacao e quantas visualizacoes tem —
-    # usamos isso pra ordenar: tocaveis primeiro, e entre eles, os mais vistos primeiro.
+    # saber quais videos realmente permitem incorporacao, se usam conteudo licenciado
+    # (Content ID — sinal extra de risco, ja que 'embeddable' sozinho as vezes erra) e
+    # quantas visualizacoes tem — usamos tudo isso pra ordenar.
     if ids_encontrados:
         detalhes = buscar_detalhes_videos(ids_encontrados)
         for r in resultados:
             info = detalhes.get(r['id'])
             if info:
                 r['embeddable'] = info['embeddable']
+                r['licenciado'] = info['licenciado']
                 r['visualizacoes'] = info['visualizacoes']
 
-    resultados.sort(key=lambda r: (not r['embeddable'], -r['visualizacoes']))
+    def nivel_risco(r):
+        if not r['embeddable']:
+            return 2  # bloqueio confirmado pela API — fica por ultimo
+        if r['licenciado']:
+            return 1  # embeddable=true mas usa audio com Content ID — pode falhar na pratica
+        return 0      # sem sinal de risco conhecido — mais confiavel
+
+    resultados.sort(key=lambda r: (nivel_risco(r), -r['visualizacoes']))
     return resultados
 
 
 def buscar_detalhes_videos(ids):
-    """Busca status.embeddable e statistics.viewCount pra uma lista de IDs de video,
-    numa unica chamada (custa so 1 unidade de cota, nao importa quantos IDs)."""
+    """Busca status.embeddable, contentDetails.licensedContent e statistics.viewCount
+    pra uma lista de IDs de video, numa unica chamada (custa so 1 unidade de cota,
+    nao importa quantos IDs).
+
+    O 'embeddable' sozinho nao e 100% confiavel: alguns videos que usam o audio
+    comercial original (marcados como 'licensedContent') aparecem como embeddable=true
+    mas ainda assim podem falhar ao tocar incorporado, porque o YouTube faz checagens
+    dinamicas adicionais na hora de reproduzir que nao aparecem nesse campo estatico.
+    Por isso tambem olhamos o licensedContent como um sinal extra de risco.
+    """
     params = urllib.parse.urlencode({
-        'part': 'status,statistics',
+        'part': 'status,statistics,contentDetails',
         'id': ','.join(ids),
         'key': YOUTUBE_API_KEY,
     })
@@ -119,6 +137,7 @@ def buscar_detalhes_videos(ids):
             continue
         status = item.get('status', {})
         stats = item.get('statistics', {})
+        content_details = item.get('contentDetails', {})
         try:
             visualizacoes = int(stats.get('viewCount', 0))
         except (TypeError, ValueError):
@@ -126,6 +145,7 @@ def buscar_detalhes_videos(ids):
         detalhes[vid] = {
             'embeddable': status.get('embeddable', True),
             'visualizacoes': visualizacoes,
+            'licenciado': content_details.get('licensedContent', False),
         }
     return detalhes
 
