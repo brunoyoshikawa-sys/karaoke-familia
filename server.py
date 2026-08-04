@@ -43,7 +43,7 @@ lock_catalogo = threading.Lock()
 YOUTUBE_API_KEY = os.environ.get('YOUTUBE_API_KEY', '').strip()
 
 
-def buscar_youtube(query, max_results=8):
+def buscar_youtube(query, max_results=20):
     if not YOUTUBE_API_KEY:
         return None
     params = urllib.parse.urlencode({
