@@ -2425,6 +2425,41 @@ function initQrCode(){
   });
 }
 
+function renderizarLoteResultados(resultados, resultadosEl, onEscolher){
+  resultados.forEach((item)=>{
+    const div = document.createElement('div');
+    div.className = 'yt-resultado';
+    div.innerHTML = `
+      <div class="yt-resultado-topo">
+        <img src="${item.thumbnail}" alt="">
+        <div class="info">
+          <div class="titulo">${item.titulo}</div>
+          <div class="canal">${item.canal}${avisoBloqueioHtml(item)}</div>
+        </div>
+      </div>
+      <button class="btn-primary">É essa!</button>
+    `;
+    div.querySelector('button').addEventListener('click', ()=> onEscolher(item));
+    resultadosEl.appendChild(div);
+  });
+}
+
+function adicionarBotaoVerMaisResultados(resultadosEl, aoClicar){
+  const btnAntigo = resultadosEl.querySelector('.btn-ver-mais-resultados');
+  if(btnAntigo) btnAntigo.remove();
+
+  const btnMais = document.createElement('button');
+  btnMais.className = 'btn-secondary btn-ver-mais-resultados';
+  btnMais.style.width = '100%';
+  btnMais.textContent = 'Ver mais 20 opções no YouTube';
+  btnMais.addEventListener('click', async ()=>{
+    btnMais.disabled = true;
+    btnMais.textContent = 'Buscando mais...';
+    await aoClicar();
+  });
+  resultadosEl.appendChild(btnMais);
+}
+
 async function buscarMusicaInlineControle(){
   const input = document.getElementById('ctl-busca-yt-texto');
   const termo = input.value.trim();
@@ -2437,8 +2472,18 @@ async function buscarMusicaInlineControle(){
   btn.textContent = 'Buscando...';
   resultadosEl.innerHTML = '';
 
-  try{
-    const r = await fetch('/api/youtube-search?q=' + encodeURIComponent(termo + ' karaokê'));
+  async function escolher(item){
+    const cantor = document.getElementById('input-cantor').value.trim() || 'Convidado(a)';
+    await apiAdd({ id: item.id, titulo: item.titulo, cantor, addedAt: Date.now() });
+    renderControle();
+    input.value = '';
+    resultadosEl.innerHTML = '';
+  }
+
+  async function executarBusca(pageToken){
+    let url = '/api/youtube-search?q=' + encodeURIComponent(termo + ' karaokê');
+    if(pageToken) url += '&pageToken=' + encodeURIComponent(pageToken);
+    const r = await fetch(url);
     const data = await r.json();
 
     if(data.erro === 'sem_chave'){
@@ -2448,39 +2493,21 @@ async function buscarMusicaInlineControle(){
     }
 
     const resultados = data.resultados || [];
-    if(resultados.length === 0){
+    if(!pageToken && resultados.length === 0){
       resultadosEl.innerHTML = '<div class="palco-fila-vazia">Nada encontrado. Tente outro termo, ou cole o link direto abaixo.</div>';
       return;
     }
 
-    resultados.forEach((item, i)=>{
-      const div = document.createElement('div');
-      div.className = 'yt-resultado';
-      div.innerHTML = `
-        <div class="yt-resultado-topo">
-          <img src="${item.thumbnail}" alt="">
-          <div class="info">
-            <div class="titulo">${item.titulo}</div>
-            <div class="canal">${item.canal}${avisoBloqueioHtml(item)}</div>
-          </div>
-        </div>
-        <button class="btn-primary" data-i="${i}">É essa!</button>
-      `;
-      resultadosEl.appendChild(div);
-    });
+    const botaoAntigo = resultadosEl.querySelector('.btn-ver-mais-resultados');
+    if(botaoAntigo) botaoAntigo.remove();
+    renderizarLoteResultados(resultados, resultadosEl, escolher);
+    if(data.proximaPagina){
+      adicionarBotaoVerMaisResultados(resultadosEl, ()=> executarBusca(data.proximaPagina));
+    }
+  }
 
-    resultadosEl.querySelectorAll('button').forEach(botao=>{
-      botao.addEventListener('click', async ()=>{
-        const item = resultados[parseInt(botao.dataset.i)];
-        const cantor = document.getElementById('input-cantor').value.trim() || 'Convidado(a)';
-        botao.disabled = true;
-        botao.textContent = 'Adicionado ✓';
-        await apiAdd({ id: item.id, titulo: item.titulo, cantor, addedAt: Date.now() });
-        renderControle();
-        input.value = '';
-        resultadosEl.innerHTML = '';
-      });
-    });
+  try{
+    await executarBusca(null);
   }catch(e){
     resultadosEl.innerHTML = '<div class="palco-fila-vazia">Não consegui buscar agora. Tente de novo, ou cole o link direto abaixo.</div>';
   }finally{
@@ -2653,8 +2680,19 @@ async function buscarMusicaInline(){
   btn.textContent = 'Buscando...';
   resultadosEl.innerHTML = '';
 
-  try{
-    const r = await fetch('/api/youtube-search?q=' + encodeURIComponent(termo + ' karaokê'));
+  async function escolher(item){
+    const cantor = document.getElementById('conv-seu-nome-unico').value.trim() || 'Convidado(a)';
+    await apiAdd({ id: item.id, titulo: item.titulo, cantor, addedAt: Date.now() });
+    await renderConvidado();
+    irParaFilaEDestacar(item.id);
+    input.value = '';
+    resultadosEl.innerHTML = '';
+  }
+
+  async function executarBusca(pageToken){
+    let url = '/api/youtube-search?q=' + encodeURIComponent(termo + ' karaokê');
+    if(pageToken) url += '&pageToken=' + encodeURIComponent(pageToken);
+    const r = await fetch(url);
     const data = await r.json();
 
     if(data.erro === 'sem_chave'){
@@ -2665,40 +2703,21 @@ async function buscarMusicaInline(){
     }
 
     const resultados = data.resultados || [];
-    if(resultados.length === 0){
+    if(!pageToken && resultados.length === 0){
       resultadosEl.innerHTML = '<div class="palco-fila-vazia">Nada encontrado. Tente outro termo, ou cole o link direto abaixo.</div>';
       return;
     }
 
-    resultados.forEach((item, i)=>{
-      const div = document.createElement('div');
-      div.className = 'yt-resultado';
-      div.innerHTML = `
-        <div class="yt-resultado-topo">
-          <img src="${item.thumbnail}" alt="">
-          <div class="info">
-            <div class="titulo">${item.titulo}</div>
-            <div class="canal">${item.canal}${avisoBloqueioHtml(item)}</div>
-          </div>
-        </div>
-        <button class="btn-primary" data-i="${i}">É essa!</button>
-      `;
-      resultadosEl.appendChild(div);
-    });
+    const botaoAntigo = resultadosEl.querySelector('.btn-ver-mais-resultados');
+    if(botaoAntigo) botaoAntigo.remove();
+    renderizarLoteResultados(resultados, resultadosEl, escolher);
+    if(data.proximaPagina){
+      adicionarBotaoVerMaisResultados(resultadosEl, ()=> executarBusca(data.proximaPagina));
+    }
+  }
 
-    resultadosEl.querySelectorAll('button').forEach(botao=>{
-      botao.addEventListener('click', async ()=>{
-        const item = resultados[parseInt(botao.dataset.i)];
-        const cantor = document.getElementById('conv-seu-nome-unico').value.trim() || 'Convidado(a)';
-        botao.disabled = true;
-        botao.textContent = 'Adicionado ✓';
-        await apiAdd({ id: item.id, titulo: item.titulo, cantor, addedAt: Date.now() });
-        await renderConvidado();
-        irParaFilaEDestacar(item.id);
-        input.value = '';
-        resultadosEl.innerHTML = '';
-      });
-    });
+  try{
+    await executarBusca(null);
   }catch(e){
     resultadosEl.innerHTML = '<div class="palco-fila-vazia">Não consegui buscar agora. Tente de novo, ou cole o link direto abaixo.</div>';
   }finally{
