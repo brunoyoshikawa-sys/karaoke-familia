@@ -2706,22 +2706,26 @@ let letraFiltroAtual = null;
 function mostrarPaginaListaCompleta(){
   artistaSelecionado = null;
   document.getElementById('conv-cat-voltar-wrap').style.display = 'none';
-  document.getElementById('conv-cat-lista-nav').style.display = 'flex';
 
   const todos = obterListaArtistasUnicos();
-  const artistas = letraFiltroAtual
-    ? todos.filter(art => primeiraLetraSemAcento(art.nome) === letraFiltroAtual)
-    : todos;
 
-  const totalPaginas = Math.max(1, Math.ceil(artistas.length / ITENS_POR_PAGINA_ARTISTAS));
+  if(letraFiltroAtual){
+    // com letra filtrada, mostra todos os artistas daquela letra numa lista so (sem paginacao)
+    document.getElementById('conv-cat-lista-nav').style.display = 'none';
+    const artistas = todos.filter(art => primeiraLetraSemAcento(art.nome) === letraFiltroAtual);
+    renderizarListaArtistas(artistas);
+    renderizarIndiceAZ();
+    return;
+  }
+
+  document.getElementById('conv-cat-lista-nav').style.display = 'flex';
+  const totalPaginas = Math.max(1, Math.ceil(todos.length / ITENS_POR_PAGINA_ARTISTAS));
   paginaListaAtual = Math.max(0, Math.min(paginaListaAtual, totalPaginas - 1));
   const inicio = paginaListaAtual * ITENS_POR_PAGINA_ARTISTAS;
-  const pagina = artistas.slice(inicio, inicio + ITENS_POR_PAGINA_ARTISTAS);
+  const pagina = todos.slice(inicio, inicio + ITENS_POR_PAGINA_ARTISTAS);
 
-  const rotulo = letraFiltroAtual
-    ? `Letra "${letraFiltroAtual}" — página ${paginaListaAtual + 1} de ${totalPaginas} (${artistas.length} artista${artistas.length===1?'':'s'})`
-    : `Página ${paginaListaAtual + 1} de ${totalPaginas} (${artistas.length} artistas)`;
-  document.getElementById('conv-cat-lista-pagina').textContent = rotulo;
+  document.getElementById('conv-cat-lista-pagina').textContent =
+    `Página ${paginaListaAtual + 1} de ${totalPaginas} (${todos.length} artistas)`;
   document.getElementById('btn-lista-anterior').disabled = paginaListaAtual === 0;
   document.getElementById('btn-lista-proxima').disabled = paginaListaAtual >= totalPaginas - 1;
 
@@ -2736,7 +2740,7 @@ function renderizarListaArtistas(pagina){
   if(letraFiltroAtual){
     const aviso = document.createElement('div');
     aviso.style.cssText = 'display:flex; align-items:center; justify-content:space-between; margin-bottom:4px;';
-    aviso.innerHTML = `<span style="color:var(--neon-cyan); font-size:13px; font-weight:600;">Mostrando: ${letraFiltroAtual}</span>
+    aviso.innerHTML = `<span style="color:var(--neon-cyan); font-size:13px; font-weight:600;">Letra "${letraFiltroAtual}" — ${pagina.length} artista${pagina.length===1?'':'s'}</span>
       <button class="btn-ghost" id="btn-limpar-filtro-letra">Ver todos ✕</button>`;
     musicasEl.appendChild(aviso);
     document.getElementById('btn-limpar-filtro-letra').addEventListener('click', ()=>{
