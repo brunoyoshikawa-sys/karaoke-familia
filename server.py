@@ -102,7 +102,11 @@ def buscar_youtube(query, max_results=20):
             return 1  # embeddable=true mas usa audio com Content ID — pode falhar na pratica
         return 0      # sem sinal de risco conhecido — mais confiavel
 
-    resultados.sort(key=lambda r: (nivel_risco(r), -r['visualizacoes']))
+    def nao_menciona_karaoke(r):
+        titulo = (r['titulo'] or '').lower()
+        return 'karaokê' not in titulo and 'karaoke' not in titulo
+
+    resultados.sort(key=lambda r: (nivel_risco(r), nao_menciona_karaoke(r), -r['visualizacoes']))
     return resultados
 
 
