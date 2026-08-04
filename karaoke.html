@@ -323,6 +323,7 @@
     <div class="row">
       <input type="text" id="ctl-busca-yt-texto" placeholder="Digite o nome da música e/ou o artista">
       <button class="btn-primary" id="btn-ctl-busca-yt">Buscar</button>
+      <button class="btn-secondary" id="btn-ctl-limpar-busca" title="Limpar busca">✕</button>
     </div>
     <div id="ctl-busca-yt-resultados" style="display:flex; flex-direction:column; gap:8px;"></div>
     <details style="margin-top:10px;">
@@ -413,6 +414,7 @@
       <div class="row">
         <input type="text" id="conv-busca-yt-texto" placeholder="Digite o nome da música e/ou o artista">
         <button class="btn-primary" id="btn-conv-busca-yt">Buscar</button>
+        <button class="btn-secondary" id="btn-conv-limpar-busca" title="Limpar busca">✕</button>
       </div>
       <div id="conv-busca-yt-resultados" style="display:flex; flex-direction:column; gap:8px;"></div>
       <details style="margin-top:10px;">
@@ -2254,6 +2256,11 @@ function initControle(){
   document.getElementById('input-link').addEventListener('keydown', (e)=>{ if(e.key==='Enter') addToQueue(); });
 
   document.getElementById('btn-ctl-busca-yt').addEventListener('click', buscarMusicaInlineControle);
+  document.getElementById('btn-ctl-limpar-busca').addEventListener('click', ()=>{
+    document.getElementById('ctl-busca-yt-texto').value = '';
+    document.getElementById('ctl-busca-yt-resultados').innerHTML = '';
+    document.getElementById('ctl-busca-yt-texto').focus();
+  });
   document.getElementById('ctl-busca-yt-texto').addEventListener('keydown', (e)=>{
     if(e.key==='Enter') buscarMusicaInlineControle();
   });
@@ -2620,6 +2627,11 @@ function initConvidado(){
   document.getElementById('conv-seu-nome-unico').addEventListener('keydown', (e)=>{ if(e.key==='Enter') addToQueueConv(); });
 
   document.getElementById('btn-conv-busca-yt').addEventListener('click', buscarMusicaInline);
+  document.getElementById('btn-conv-limpar-busca').addEventListener('click', ()=>{
+    document.getElementById('conv-busca-yt-texto').value = '';
+    document.getElementById('conv-busca-yt-resultados').innerHTML = '';
+    document.getElementById('conv-busca-yt-texto').focus();
+  });
   document.getElementById('conv-busca-yt-texto').addEventListener('keydown', (e)=>{
     if(e.key==='Enter') buscarMusicaInline();
   });
