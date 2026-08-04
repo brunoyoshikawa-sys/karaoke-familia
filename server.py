@@ -63,6 +63,7 @@ def buscar_youtube(query, max_results=8):
         return []
 
     resultados = []
+    ids_encontrados = []
     for item in data.get('items', []):
         vid = (item.get('id') or {}).get('videoId')
         if not vid:
@@ -75,8 +76,58 @@ def buscar_youtube(query, max_results=8):
             'titulo': snippet.get('title', ''),
             'canal': snippet.get('channelTitle', ''),
             'thumbnail': thumb,
+            'embeddable': True,   # valor padrao otimista, ajustado abaixo se a API disser o contrario
+            'visualizacoes': 0,
         })
+        ids_encontrados.append(vid)
+
+    # segunda chamada (barata: so 1 unidade de cota, independente de quantos IDs) pra
+    # saber quais videos realmente permitem incorporacao e quantas visualizacoes tem —
+    # usamos isso pra ordenar: tocaveis primeiro, e entre eles, os mais vistos primeiro.
+    if ids_encontrados:
+        detalhes = buscar_detalhes_videos(ids_encontrados)
+        for r in resultados:
+            info = detalhes.get(r['id'])
+            if info:
+                r['embeddable'] = info['embeddable']
+                r['visualizacoes'] = info['visualizacoes']
+
+    resultados.sort(key=lambda r: (not r['embeddable'], -r['visualizacoes']))
     return resultados
+
+
+def buscar_detalhes_videos(ids):
+    """Busca status.embeddable e statistics.viewCount pra uma lista de IDs de video,
+    numa unica chamada (custa so 1 unidade de cota, nao importa quantos IDs)."""
+    params = urllib.parse.urlencode({
+        'part': 'status,statistics',
+        'id': ','.join(ids),
+        'key': YOUTUBE_API_KEY,
+    })
+    url = 'https://www.googleapis.com/youtube/v3/videos?' + params
+    try:
+        with urllib.request.urlopen(url, timeout=8) as resp:
+            data = json.loads(resp.read().decode('utf-8'))
+    except Exception as e:
+        print('Erro ao buscar detalhes dos videos:', e)
+        return {}
+
+    detalhes = {}
+    for item in data.get('items', []):
+        vid = item.get('id')
+        if not vid:
+            continue
+        status = item.get('status', {})
+        stats = item.get('statistics', {})
+        try:
+            visualizacoes = int(stats.get('viewCount', 0))
+        except (TypeError, ValueError):
+            visualizacoes = 0
+        detalhes[vid] = {
+            'embeddable': status.get('embeddable', True),
+            'visualizacoes': visualizacoes,
+        }
+    return detalhes
 
 # Cada "sala" tem sua propria fila, isolada das outras — assim, como a URL
 # agora e publica, duas pessoas diferentes abrindo o karaokê nao acabam
