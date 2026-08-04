@@ -2701,19 +2701,27 @@ function primeiraLetraSemAcento(texto){
   return /[A-ZÀ-Ú]/.test(c) ? c.normalize('NFD').replace(/[\u0300-\u036f]/g,'') : '#';
 }
 
+let letraFiltroAtual = null;
+
 function mostrarPaginaListaCompleta(){
   artistaSelecionado = null;
   document.getElementById('conv-cat-voltar-wrap').style.display = 'none';
   document.getElementById('conv-cat-lista-nav').style.display = 'flex';
 
-  const artistas = obterListaArtistasUnicos();
+  const todos = obterListaArtistasUnicos();
+  const artistas = letraFiltroAtual
+    ? todos.filter(art => primeiraLetraSemAcento(art.nome) === letraFiltroAtual)
+    : todos;
+
   const totalPaginas = Math.max(1, Math.ceil(artistas.length / ITENS_POR_PAGINA_ARTISTAS));
   paginaListaAtual = Math.max(0, Math.min(paginaListaAtual, totalPaginas - 1));
   const inicio = paginaListaAtual * ITENS_POR_PAGINA_ARTISTAS;
   const pagina = artistas.slice(inicio, inicio + ITENS_POR_PAGINA_ARTISTAS);
 
-  document.getElementById('conv-cat-lista-pagina').textContent =
-    `Página ${paginaListaAtual + 1} de ${totalPaginas} (${artistas.length} artistas)`;
+  const rotulo = letraFiltroAtual
+    ? `Letra "${letraFiltroAtual}" — página ${paginaListaAtual + 1} de ${totalPaginas} (${artistas.length} artista${artistas.length===1?'':'s'})`
+    : `Página ${paginaListaAtual + 1} de ${totalPaginas} (${artistas.length} artistas)`;
+  document.getElementById('conv-cat-lista-pagina').textContent = rotulo;
   document.getElementById('btn-lista-anterior').disabled = paginaListaAtual === 0;
   document.getElementById('btn-lista-proxima').disabled = paginaListaAtual >= totalPaginas - 1;
 
@@ -2724,8 +2732,25 @@ function mostrarPaginaListaCompleta(){
 function renderizarListaArtistas(pagina){
   const musicasEl = document.getElementById('conv-cat-musicas');
   musicasEl.innerHTML = '';
+
+  if(letraFiltroAtual){
+    const aviso = document.createElement('div');
+    aviso.style.cssText = 'display:flex; align-items:center; justify-content:space-between; margin-bottom:4px;';
+    aviso.innerHTML = `<span style="color:var(--neon-cyan); font-size:13px; font-weight:600;">Mostrando: ${letraFiltroAtual}</span>
+      <button class="btn-ghost" id="btn-limpar-filtro-letra">Ver todos ✕</button>`;
+    musicasEl.appendChild(aviso);
+    document.getElementById('btn-limpar-filtro-letra').addEventListener('click', ()=>{
+      letraFiltroAtual = null;
+      paginaListaAtual = 0;
+      mostrarPaginaListaCompleta();
+    });
+  }
+
   if(pagina.length === 0){
-    musicasEl.innerHTML = '<div class="palco-fila-vazia">Nenhum artista no catálogo ainda.</div>';
+    const vazio = document.createElement('div');
+    vazio.className = 'palco-fila-vazia';
+    vazio.textContent = 'Nenhum artista encontrado.';
+    musicasEl.appendChild(vazio);
     return;
   }
   pagina.forEach(art=>{
@@ -2765,18 +2790,18 @@ function renderizarIndiceAZ(){
   const disponiveis = new Set(artistas.map(art => primeiraLetraSemAcento(art.nome)));
   el.innerHTML = letras.map(l=>{
     const tem = disponiveis.has(l);
-    return `<button class="btn-indice-az" ${tem ? '' : 'disabled'} data-letra="${l}">${l}</button>`;
+    const ativa = l === letraFiltroAtual;
+    return `<button class="btn-indice-az${ativa ? ' ativo' : ''}" ${tem ? '' : 'disabled'} data-letra="${l}">${l}</button>`;
   }).join('');
   el.querySelectorAll('button:not([disabled])').forEach(btn=>{
-    btn.addEventListener('click', ()=> pularParaLetra(btn.dataset.letra));
+    btn.addEventListener('click', ()=> filtrarPorLetra(btn.dataset.letra));
   });
 }
 
-function pularParaLetra(letra){
-  const artistas = obterListaArtistasUnicos();
-  const idx = artistas.findIndex(art => primeiraLetraSemAcento(art.nome) === letra);
-  if(idx === -1) return;
-  paginaListaAtual = Math.floor(idx / ITENS_POR_PAGINA_ARTISTAS);
+function filtrarPorLetra(letra){
+  // clicar na mesma letra de novo remove o filtro (volta pra lista completa)
+  letraFiltroAtual = (letraFiltroAtual === letra) ? null : letra;
+  paginaListaAtual = 0;
   mostrarPaginaListaCompleta();
 }
 
