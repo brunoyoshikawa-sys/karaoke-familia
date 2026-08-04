@@ -89,8 +89,20 @@
     flex-shrink:0; width:280px; height:100%; box-sizing:border-box;
     background:var(--bg-raised); border-left:1px solid rgba(255,255,255,0.08);
     display:flex; flex-direction:column; align-items:center; gap:22px;
-    padding:28px 22px; overflow-y:auto;
+    padding:28px 22px; overflow-y:auto; position:relative;
+    transition:width .2s ease, padding .2s ease;
   }
+  .palco-sidebar.escondida{
+    width:0; padding:0; overflow:hidden; border-left:none;
+  }
+  #btn-toggle-sidebar{
+    position:absolute; top:50%; right:0; transform:translateY(-50%); z-index:25;
+    width:28px; height:56px; border:none; cursor:pointer; border-radius:8px 0 0 8px;
+    background:rgba(21,20,31,0.85); color:var(--text); font-size:18px;
+    display:flex; align-items:center; justify-content:center;
+  }
+  #btn-toggle-sidebar:hover{ color:var(--neon-pink); }
+  .palco-video-col{ position:relative; }
   .palco-qr-area{display:flex; flex-direction:column; align-items:center; gap:10px; flex-shrink:0;}
   #palco-qr-box{
     width:170px; height:170px; background:#fff; border-radius:12px; padding:10px;
@@ -276,6 +288,7 @@
 <div id="palco" class="hidden">
   <div class="palco-video-col">
     <div style="position:absolute; bottom:6px; left:8px; z-index:30; color:rgba(255,255,255,0.25); font-size:11px; font-family:'Inter',sans-serif;">v2026-07-17-colunas-v1</div>
+    <button id="btn-toggle-sidebar" title="Esconder/mostrar painel lateral">›</button>
     <div id="player-wrap"><div id="ytplayer"></div></div>
     <div id="idle-screen">
       <div class="marquee">KARAOKÊ</div>
@@ -284,7 +297,7 @@
     </div>
   </div>
 
-  <div class="palco-sidebar">
+  <div class="palco-sidebar" id="palco-sidebar">
     <div class="palco-qr-area">
       <div id="palco-qr-box"><span>gerando QR...</span></div>
       <div class="palco-qr-legenda">📱 Aponte a câmera<br>e peça sua música</div>
@@ -2361,6 +2374,19 @@ function renderQr(ip){
 
 function initQrCode(){
   const ipInput = document.getElementById('input-ip');
+  const currentHost = window.location.hostname;
+
+  if(!pareceEnderecoDeRedeLocal(currentHost)){
+    // hospedado na internet (ex: Render) — nao existe "IP da rede" pra digitar,
+    // o proprio endereco atual ja e o certo. Gera o QR sozinho, sem pedir nada.
+    document.querySelector('.ip-row').style.display = 'none';
+    document.querySelector('#painel-convidados small').innerHTML =
+      'O link é gerado automaticamente com o endereço deste site.';
+    ipInput.value = currentHost;
+    renderQr(currentHost);
+    return;
+  }
+
   const savedIp = localStorage.getItem(IP_STORAGE_KEY);
   if(savedIp){
     ipInput.value = savedIp;
@@ -2536,6 +2562,28 @@ function initPalco(){
   // mas o QR code e a lista da fila nao devem depender disso — comecam a atualizar ja.
   refreshPalco();
   setInterval(refreshPalco, 1500);
+
+  const sidebar = document.getElementById('palco-sidebar');
+  const btnToggle = document.getElementById('btn-toggle-sidebar');
+
+  function aplicarEstadoSidebar(escondida){
+    sidebar.classList.toggle('escondida', escondida);
+    btnToggle.textContent = escondida ? '‹' : '›';
+    btnToggle.title = escondida ? 'Mostrar painel lateral' : 'Esconder painel lateral';
+    localStorage.setItem('karaokeSidebarEscondida', escondida ? '1' : '0');
+  }
+
+  // lembra a preferencia entre uma sessao e outra do Palco — mas se ainda nao
+  // tem preferencia salva, comeca escondida sozinha em celular/tablet (telas
+  // menores), ja que o QR/fila tomam espaço demais do vídeo nessas telas.
+  const preferenciaSalva = localStorage.getItem('karaokeSidebarEscondida');
+  const ehTelaPequena = window.matchMedia('(max-width: 1024px)').matches;
+  const estadoInicial = preferenciaSalva !== null ? (preferenciaSalva === '1') : ehTelaPequena;
+  aplicarEstadoSidebar(estadoInicial);
+
+  btnToggle.addEventListener('click', ()=>{
+    aplicarEstadoSidebar(!sidebar.classList.contains('escondida'));
+  });
 }
 
 /* ================= CONVIDADO ================= */
