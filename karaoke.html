@@ -166,7 +166,8 @@
     display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;}
   .yt-resultado .canal{font-size:11px; color:var(--muted); margin-top:2px;}
   .yt-resultado button{width:100%; padding:10px 12px; font-size:13px;}
-  .aviso-bloqueio{color:#FFB020;}
+  .aviso-bloqueio.aviso-forte{color:#FF6B6B;}
+  .aviso-bloqueio.aviso-leve{color:#FFB020;}
   .cat-tab.ativo{border-color:var(--neon-pink); color:var(--neon-pink);}
 
   .conv-tabs-bar{
@@ -1866,6 +1867,16 @@ async function fetchYouTubeTitle(id){
   }
 }
 
+function avisoBloqueioHtml(item){
+  if(item.embeddable === false){
+    return ' · <span class="aviso-bloqueio aviso-forte">⚠️ pode estar bloqueado</span>';
+  }
+  if(item.licenciado === true){
+    return ' · <span class="aviso-bloqueio aviso-leve">⚠️ risco de bloqueio</span>';
+  }
+  return '';
+}
+
 function extractYouTubeId(url){
   const patterns = [
     /(?:youtu\.be\/)([A-Za-z0-9_-]{11})/,
@@ -2443,7 +2454,7 @@ async function buscarMusicaInlineControle(){
           <img src="${item.thumbnail}" alt="">
           <div class="info">
             <div class="titulo">${item.titulo}</div>
-            <div class="canal">${item.canal}${item.embeddable === false ? ' · <span class="aviso-bloqueio">⚠️ pode estar bloqueado</span>' : ''}</div>
+            <div class="canal">${item.canal}${avisoBloqueioHtml(item)}</div>
           </div>
         </div>
         <button class="btn-primary" data-i="${i}">É essa!</button>
@@ -2655,7 +2666,7 @@ async function buscarMusicaInline(){
           <img src="${item.thumbnail}" alt="">
           <div class="info">
             <div class="titulo">${item.titulo}</div>
-            <div class="canal">${item.canal}${item.embeddable === false ? ' · <span class="aviso-bloqueio">⚠️ pode estar bloqueado</span>' : ''}</div>
+            <div class="canal">${item.canal}${avisoBloqueioHtml(item)}</div>
           </div>
         </div>
         <button class="btn-primary" data-i="${i}">É essa!</button>
@@ -2948,7 +2959,7 @@ function renderizarListaCatalogo(itens){
               <img src="${resultado.thumbnail}" alt="">
               <div class="info">
                 <div class="titulo">${resultado.titulo}</div>
-                <div class="canal">${resultado.canal}${resultado.embeddable === false ? ' · <span class="aviso-bloqueio">⚠️ pode estar bloqueado</span>' : ''}</div>
+                <div class="canal">${resultado.canal}${avisoBloqueioHtml(resultado)}</div>
               </div>
             </div>
             <button class="btn-primary" data-ri="${ri}">É essa!</button>
