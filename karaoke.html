@@ -135,7 +135,7 @@
   }
   select:focus{outline:none; border-color:var(--neon-cyan);}
   .cat-item{
-    display:flex; align-items:center; gap:10px; background:#0e0d17; border:1px solid var(--line);
+    display:flex; align-items:flex-start; gap:10px; background:#0e0d17; border:1px solid var(--line);
     border-radius:10px; padding:10px 12px;
   }
   .cat-item .info{flex:1; min-width:0;}
@@ -143,16 +143,17 @@
   .cat-item .meta{color:var(--muted); font-size:12px;}
   .cat-item .meta b{color:var(--neon-cyan);}
   .yt-resultado{
-    display:flex; gap:10px; align-items:center; background:#0e0d17; border:1px solid var(--line);
-    border-radius:10px; padding:8px; cursor:pointer; transition:border-color .15s ease;
+    display:flex; flex-direction:column; gap:8px; background:#0e0d17; border:1px solid var(--line);
+    border-radius:10px; padding:10px; transition:border-color .15s ease;
   }
   .yt-resultado:hover{border-color:var(--neon-cyan);}
+  .yt-resultado .yt-resultado-topo{display:flex; gap:10px; align-items:center; min-width:0;}
   .yt-resultado img{width:64px; height:48px; object-fit:cover; border-radius:6px; flex-shrink:0; background:#000;}
   .yt-resultado .info{flex:1; min-width:0;}
   .yt-resultado .titulo{font-size:13px; font-weight:600; color:var(--text); line-height:1.3;
     display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;}
   .yt-resultado .canal{font-size:11px; color:var(--muted); margin-top:2px;}
-  .yt-resultado button{flex-shrink:0; padding:8px 12px; font-size:12px;}
+  .yt-resultado button{width:100%; padding:10px 12px; font-size:13px;}
   .cat-tab.ativo{border-color:var(--neon-pink); color:var(--neon-pink);}
 
   .conv-tabs-bar{
@@ -302,16 +303,20 @@
   <div class="panel">
     <h2>Adicionar música à fila</h2>
     <div class="row">
-      <input type="text" id="input-link" placeholder="Cole o link do YouTube aqui (ex: https://youtu.be/...)">
-    </div>
-    <div class="row">
       <input type="text" id="input-cantor" placeholder="Nome de quem vai cantar">
-      <button class="btn-primary" id="btn-add">Adicionar à fila</button>
     </div>
     <div class="row">
-      <input type="text" id="input-busca" placeholder="Ou pesquise: digite o nome da música">
-      <button class="btn-secondary" id="btn-busca">Buscar no YouTube ↗</button>
+      <input type="text" id="ctl-busca-yt-texto" placeholder="Digite o nome da música e/ou o artista">
+      <button class="btn-primary" id="btn-ctl-busca-yt">Buscar</button>
     </div>
+    <div id="ctl-busca-yt-resultados" style="display:flex; flex-direction:column; gap:8px;"></div>
+    <details style="margin-top:10px;">
+      <summary style="color:var(--muted); font-size:13px; cursor:pointer;">Já tem o link do YouTube? Cole aqui</summary>
+      <div class="row" style="margin-top:10px;">
+        <input type="text" id="input-link" placeholder="Cole o link do YouTube aqui (ex: https://youtu.be/...)">
+        <button class="btn-secondary" id="btn-add">Adicionar</button>
+      </div>
+    </details>
   </div>
 
   <div class="panel" id="agora-tocando">
@@ -406,7 +411,10 @@
 
     <div class="panel">
       <h2>Catálogo de sugestões</h2>
-      <p style="color:var(--muted); font-size:13px; margin:-8px 0 12px;">Não achou no YouTube? Veja se sua música está na lista abaixo.</p>
+      <p style="color:var(--muted); font-size:13px; margin:-8px 0 12px;">Não achou no YouTube? Escolha um artista e depois a música na lista abaixo.</p>
+      <div class="row" id="conv-cat-voltar-wrap" style="display:none;">
+        <button class="btn-secondary" id="btn-cat-voltar-artistas">← Voltar para artistas</button>
+      </div>
       <div class="row" id="conv-cat-lista-nav" style="align-items:center; justify-content:space-between;">
         <button class="btn-ghost" id="btn-lista-anterior">← Anterior</button>
         <span id="conv-cat-lista-pagina" style="color:var(--muted); font-size:13px;"></span>
@@ -2220,14 +2228,9 @@ function initControle(){
   document.getElementById('input-cantor').addEventListener('keydown', (e)=>{ if(e.key==='Enter') addToQueue(); });
   document.getElementById('input-link').addEventListener('keydown', (e)=>{ if(e.key==='Enter') addToQueue(); });
 
-  document.getElementById('btn-busca').addEventListener('click', ()=>{
-    const termo = document.getElementById('input-busca').value.trim();
-    if(!termo) return;
-    const url = 'https://www.youtube.com/results?search_query=' + encodeURIComponent(termo + ' karaokê letra');
-    window.open(url, '_blank');
-  });
-  document.getElementById('input-busca').addEventListener('keydown', (e)=>{
-    if(e.key==='Enter') document.getElementById('btn-busca').click();
+  document.getElementById('btn-ctl-busca-yt').addEventListener('click', buscarMusicaInlineControle);
+  document.getElementById('ctl-busca-yt-texto').addEventListener('keydown', (e)=>{
+    if(e.key==='Enter') buscarMusicaInlineControle();
   });
 
   document.getElementById('btn-pular').addEventListener('click', async ()=>{
@@ -2375,6 +2378,70 @@ function initQrCode(){
   ipInput.addEventListener('keydown', (e)=>{
     if(e.key === 'Enter') document.getElementById('btn-gerar-qr').click();
   });
+}
+
+async function buscarMusicaInlineControle(){
+  const input = document.getElementById('ctl-busca-yt-texto');
+  const termo = input.value.trim();
+  const btn = document.getElementById('btn-ctl-busca-yt');
+  const resultadosEl = document.getElementById('ctl-busca-yt-resultados');
+  if(!termo) return;
+
+  const original = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Buscando...';
+  resultadosEl.innerHTML = '';
+
+  try{
+    const r = await fetch('/api/youtube-search?q=' + encodeURIComponent(termo + ' karaokê'));
+    const data = await r.json();
+
+    if(data.erro === 'sem_chave'){
+      window.open('https://www.youtube.com/results?search_query=' + encodeURIComponent(termo + ' karaokê letra'), '_blank');
+      resultadosEl.innerHTML = '<div class="palco-fila-vazia">Abrimos a busca numa aba — copie o link de lá e cole em "Já tem o link do YouTube?" abaixo.</div>';
+      return;
+    }
+
+    const resultados = data.resultados || [];
+    if(resultados.length === 0){
+      resultadosEl.innerHTML = '<div class="palco-fila-vazia">Nada encontrado. Tente outro termo, ou cole o link direto abaixo.</div>';
+      return;
+    }
+
+    resultados.forEach((item, i)=>{
+      const div = document.createElement('div');
+      div.className = 'yt-resultado';
+      div.innerHTML = `
+        <div class="yt-resultado-topo">
+          <img src="${item.thumbnail}" alt="">
+          <div class="info">
+            <div class="titulo">${item.titulo}</div>
+            <div class="canal">${item.canal}</div>
+          </div>
+        </div>
+        <button class="btn-primary" data-i="${i}">É essa!</button>
+      `;
+      resultadosEl.appendChild(div);
+    });
+
+    resultadosEl.querySelectorAll('button').forEach(botao=>{
+      botao.addEventListener('click', async ()=>{
+        const item = resultados[parseInt(botao.dataset.i)];
+        const cantor = document.getElementById('input-cantor').value.trim() || 'Convidado(a)';
+        botao.disabled = true;
+        botao.textContent = 'Adicionado ✓';
+        await apiAdd({ id: item.id, titulo: item.titulo, cantor, addedAt: Date.now() });
+        renderControle();
+        input.value = '';
+        resultadosEl.innerHTML = '';
+      });
+    });
+  }catch(e){
+    resultadosEl.innerHTML = '<div class="palco-fila-vazia">Não consegui buscar agora. Tente de novo, ou cole o link direto abaixo.</div>';
+  }finally{
+    btn.disabled = false;
+    btn.textContent = original;
+  }
 }
 
 async function addToQueue(){
@@ -2535,10 +2602,12 @@ async function buscarMusicaInline(){
       const div = document.createElement('div');
       div.className = 'yt-resultado';
       div.innerHTML = `
-        <img src="${item.thumbnail}" alt="">
-        <div class="info">
-          <div class="titulo">${item.titulo}</div>
-          <div class="canal">${item.canal}</div>
+        <div class="yt-resultado-topo">
+          <img src="${item.thumbnail}" alt="">
+          <div class="info">
+            <div class="titulo">${item.titulo}</div>
+            <div class="canal">${item.canal}</div>
+          </div>
         </div>
         <button class="btn-primary" data-i="${i}">É essa!</button>
       `;
@@ -2600,48 +2669,100 @@ async function initCatalogoConvidado(){
   document.getElementById('btn-lista-proxima').addEventListener('click', ()=>{
     paginaListaAtual++; mostrarPaginaListaCompleta();
   });
+  document.getElementById('btn-cat-voltar-artistas').addEventListener('click', ()=>{
+    mostrarPaginaListaCompleta();
+  });
 
   document.getElementById('conv-cat-musicas').innerHTML = '<div class="palco-fila-vazia">Carregando sugestões...</div>';
   catalogoCache = await fetchCatalogo();
   mostrarPaginaListaCompleta();
 }
 
-let listaOrdenadaPorArtista = null;
+let listaArtistasUnicos = null;
+let artistaSelecionado = null;
+const ITENS_POR_PAGINA_ARTISTAS = 30;
 
-function obterListaOrdenadaPorArtista(){
-  if(!listaOrdenadaPorArtista){
-    listaOrdenadaPorArtista = [...catalogoCache].sort((a,b)=>
-      (a.artista||'').localeCompare(b.artista||'', 'pt-BR') || (a.titulo||'').localeCompare(b.titulo||'', 'pt-BR')
-    );
+function obterListaArtistasUnicos(){
+  if(!listaArtistasUnicos){
+    const contagem = {};
+    catalogoCache.forEach(item=>{
+      const nome = (item.artista || 'Outros').trim() || 'Outros';
+      contagem[nome] = (contagem[nome] || 0) + 1;
+    });
+    listaArtistasUnicos = Object.keys(contagem)
+      .sort((a,b)=> a.localeCompare(b, 'pt-BR'))
+      .map(nome => ({ nome, quantidade: contagem[nome] }));
   }
-  return listaOrdenadaPorArtista;
+  return listaArtistasUnicos;
+}
+
+function primeiraLetraSemAcento(texto){
+  const c = (texto || '?').trim().charAt(0).toUpperCase();
+  return /[A-ZÀ-Ú]/.test(c) ? c.normalize('NFD').replace(/[\u0300-\u036f]/g,'') : '#';
 }
 
 function mostrarPaginaListaCompleta(){
-  const ordenada = obterListaOrdenadaPorArtista();
-  const totalPaginas = Math.max(1, Math.ceil(ordenada.length / ITENS_POR_PAGINA_LISTA));
+  artistaSelecionado = null;
+  document.getElementById('conv-cat-voltar-wrap').style.display = 'none';
+  document.getElementById('conv-cat-lista-nav').style.display = 'flex';
+
+  const artistas = obterListaArtistasUnicos();
+  const totalPaginas = Math.max(1, Math.ceil(artistas.length / ITENS_POR_PAGINA_ARTISTAS));
   paginaListaAtual = Math.max(0, Math.min(paginaListaAtual, totalPaginas - 1));
-  const inicio = paginaListaAtual * ITENS_POR_PAGINA_LISTA;
-  const pagina = ordenada.slice(inicio, inicio + ITENS_POR_PAGINA_LISTA);
+  const inicio = paginaListaAtual * ITENS_POR_PAGINA_ARTISTAS;
+  const pagina = artistas.slice(inicio, inicio + ITENS_POR_PAGINA_ARTISTAS);
 
   document.getElementById('conv-cat-lista-pagina').textContent =
-    `Página ${paginaListaAtual + 1} de ${totalPaginas} (${ordenada.length} músicas)`;
+    `Página ${paginaListaAtual + 1} de ${totalPaginas} (${artistas.length} artistas)`;
   document.getElementById('btn-lista-anterior').disabled = paginaListaAtual === 0;
   document.getElementById('btn-lista-proxima').disabled = paginaListaAtual >= totalPaginas - 1;
 
-  renderizarListaCatalogo(pagina);
+  renderizarListaArtistas(pagina);
   renderizarIndiceAZ();
+}
+
+function renderizarListaArtistas(pagina){
+  const musicasEl = document.getElementById('conv-cat-musicas');
+  musicasEl.innerHTML = '';
+  if(pagina.length === 0){
+    musicasEl.innerHTML = '<div class="palco-fila-vazia">Nenhum artista no catálogo ainda.</div>';
+    return;
+  }
+  pagina.forEach(art=>{
+    const div = document.createElement('div');
+    div.className = 'cat-item';
+    div.style.cursor = 'pointer';
+    div.innerHTML = `
+      <div class="info">
+        <div class="titulo">${art.nome}</div>
+        <div class="meta">${art.quantidade} música${art.quantidade > 1 ? 's' : ''}</div>
+      </div>
+      <span style="color:var(--muted); font-size:18px;">›</span>
+    `;
+    div.addEventListener('click', ()=> mostrarMusicasDoArtista(art.nome));
+    musicasEl.appendChild(div);
+  });
+}
+
+function mostrarMusicasDoArtista(nomeArtista){
+  artistaSelecionado = nomeArtista;
+  document.getElementById('conv-cat-voltar-wrap').style.display = 'flex';
+  document.getElementById('conv-cat-lista-nav').style.display = 'none';
+  document.getElementById('conv-cat-indice-az').innerHTML = '';
+
+  const musicas = catalogoCache
+    .filter(item => (item.artista || 'Outros').trim() === nomeArtista)
+    .sort((a,b)=> (a.titulo||'').localeCompare(b.titulo||'', 'pt-BR'));
+
+  renderizarListaCatalogo(musicas);
 }
 
 function renderizarIndiceAZ(){
   const el = document.getElementById('conv-cat-indice-az');
   if(!el) return;
-  const ordenada = obterListaOrdenadaPorArtista();
+  const artistas = obterListaArtistasUnicos();
   const letras = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ#'.split('');
-  const disponiveis = new Set(ordenada.map(item=>{
-    const c = (item.artista||'?').trim().charAt(0).toUpperCase();
-    return /[A-ZÀ-Ú]/.test(c) ? c.normalize('NFD').replace(/[\u0300-\u036f]/g,'') : '#';
-  }));
+  const disponiveis = new Set(artistas.map(art => primeiraLetraSemAcento(art.nome)));
   el.innerHTML = letras.map(l=>{
     const tem = disponiveis.has(l);
     return `<button class="btn-indice-az" ${tem ? '' : 'disabled'} data-letra="${l}">${l}</button>`;
@@ -2652,14 +2773,10 @@ function renderizarIndiceAZ(){
 }
 
 function pularParaLetra(letra){
-  const ordenada = obterListaOrdenadaPorArtista();
-  let idx = ordenada.findIndex(item=>{
-    const c = (item.artista||'?').trim().charAt(0).toUpperCase();
-    const cSemAcento = /[A-ZÀ-Ú]/.test(c) ? c.normalize('NFD').replace(/[\u0300-\u036f]/g,'') : '#';
-    return cSemAcento === letra;
-  });
+  const artistas = obterListaArtistasUnicos();
+  const idx = artistas.findIndex(art => primeiraLetraSemAcento(art.nome) === letra);
   if(idx === -1) return;
-  paginaListaAtual = Math.floor(idx / ITENS_POR_PAGINA_LISTA);
+  paginaListaAtual = Math.floor(idx / ITENS_POR_PAGINA_ARTISTAS);
   mostrarPaginaListaCompleta();
 }
 
@@ -2719,11 +2836,9 @@ function renderizarListaCatalogo(itens){
     btn.addEventListener('click', async ()=>{
       const item = itens[i];
       const painel = btn.closest('.cat-item').querySelector('.cat-busca-resultados');
-      const original = btn.textContent;
-      btn.disabled = true;
-      btn.textContent = 'Buscando...';
+      btn.style.display = 'none';
       painel.style.display = 'flex';
-      painel.innerHTML = '';
+      painel.innerHTML = '<div style="color:var(--muted); font-size:13px;">Buscando...</div>';
 
       const termo = item.titulo + (item.artista ? ' ' + item.artista : '') + ' karaokê';
       try{
@@ -2751,10 +2866,12 @@ function renderizarListaCatalogo(itens){
           const resDiv = document.createElement('div');
           resDiv.className = 'yt-resultado';
           resDiv.innerHTML = `
-            <img src="${resultado.thumbnail}" alt="">
-            <div class="info">
-              <div class="titulo">${resultado.titulo}</div>
-              <div class="canal">${resultado.canal}</div>
+            <div class="yt-resultado-topo">
+              <img src="${resultado.thumbnail}" alt="">
+              <div class="info">
+                <div class="titulo">${resultado.titulo}</div>
+                <div class="canal">${resultado.canal}</div>
+              </div>
             </div>
             <button class="btn-primary" data-ri="${ri}">É essa!</button>
           `;
@@ -2774,9 +2891,6 @@ function renderizarListaCatalogo(itens){
         });
       }catch(e){
         painel.innerHTML = '<div style="color:var(--muted); font-size:13px;">Não consegui buscar agora, tente de novo.</div>';
-      }finally{
-        btn.disabled = false;
-        btn.textContent = original;
       }
     });
   });
