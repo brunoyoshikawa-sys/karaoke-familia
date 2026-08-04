@@ -2693,12 +2693,9 @@ function renderizarListaCatalogo(itens){
         <div class="info">
           <div class="titulo">${item.titulo}</div>
           <div class="meta">${item.artista ? item.artista : ''}${item.idioma ? ' · ' + item.idioma : ''}</div>
-          <div class="cat-busca-confirma" style="display:none; margin-top:8px; gap:6px; flex-direction:column;">
-            <input type="text" class="cat-input-link-encontrado" placeholder="Cole aqui o link que você achou no YouTube">
-            <button class="btn-primary btn-confirmar-catalogo" style="padding:8px 14px; font-size:13px;">Confirmar e adicionar à fila</button>
-          </div>
+          <div class="cat-busca-resultados" style="display:none; margin-top:8px; flex-direction:column; gap:6px;"></div>
         </div>
-        <button class="btn-secondary btn-buscar-catalogo" style="padding:8px 14px; font-size:13px; white-space:nowrap;">Buscar no YouTube ↗</button>
+        <button class="btn-secondary btn-buscar-catalogo" style="padding:8px 14px; font-size:13px; white-space:nowrap;">Buscar no YouTube</button>
       `;
     }
     musicasEl.appendChild(div);
@@ -2719,32 +2716,84 @@ function renderizarListaCatalogo(itens){
   });
 
   musicasEl.querySelectorAll('.btn-buscar-catalogo').forEach((btn, i)=>{
-    btn.addEventListener('click', ()=>{
-      const item = itens[i];
-      const termo = item.titulo + (item.artista ? ' ' + item.artista : '') + ' karaokê';
-      window.open('https://www.youtube.com/results?search_query=' + encodeURIComponent(termo), '_blank');
-      const painel = btn.closest('.cat-item').querySelector('.cat-busca-confirma');
-      painel.style.display = 'flex';
-    });
-  });
-
-  musicasEl.querySelectorAll('.btn-confirmar-catalogo').forEach((btn, i)=>{
     btn.addEventListener('click', async ()=>{
       const item = itens[i];
-      const linkInput = btn.closest('.cat-item').querySelector('.cat-input-link-encontrado');
-      const id = extractYouTubeId(linkInput.value.trim());
-      if(!id){
-        alert('Cole um link válido do YouTube (ex: https://www.youtube.com/watch?v=XXXXXXXXXXX)');
-        return;
-      }
-      const cantor = document.getElementById('conv-seu-nome-unico').value.trim() || 'Convidado(a)';
+      const painel = btn.closest('.cat-item').querySelector('.cat-busca-resultados');
       const original = btn.textContent;
       btn.disabled = true;
-      btn.textContent = 'Adicionado ✓';
-      await apiAdd({ id, titulo: item.titulo, cantor, addedAt: Date.now() });
-      await renderConvidado();
-      irParaFilaEDestacar(id);
+      btn.textContent = 'Buscando...';
+      painel.style.display = 'flex';
+      painel.innerHTML = '';
+
+      const termo = item.titulo + (item.artista ? ' ' + item.artista : '') + ' karaokê';
+      try{
+        const r = await fetch('/api/youtube-search?q=' + encodeURIComponent(termo));
+        const data = await r.json();
+
+        if(data.erro === 'sem_chave'){
+          // sem chave configurada no servidor — cai no modo antigo (abre aba de busca)
+          window.open('https://www.youtube.com/results?search_query=' + encodeURIComponent(termo), '_blank');
+          painel.innerHTML = `
+            <input type="text" class="cat-input-link-encontrado" placeholder="Cole aqui o link que você achou no YouTube">
+            <button class="btn-primary btn-confirmar-catalogo" style="padding:8px 14px; font-size:13px;">Confirmar e adicionar à fila</button>
+          `;
+          ligarConfirmarLinkManual(painel, item);
+          return;
+        }
+
+        const resultados = data.resultados || [];
+        if(resultados.length === 0){
+          painel.innerHTML = '<div style="color:var(--muted); font-size:13px;">Nada encontrado.</div>';
+          return;
+        }
+
+        resultados.forEach((resultado, ri)=>{
+          const resDiv = document.createElement('div');
+          resDiv.className = 'yt-resultado';
+          resDiv.innerHTML = `
+            <img src="${resultado.thumbnail}" alt="">
+            <div class="info">
+              <div class="titulo">${resultado.titulo}</div>
+              <div class="canal">${resultado.canal}</div>
+            </div>
+            <button class="btn-primary" data-ri="${ri}">É essa!</button>
+          `;
+          painel.appendChild(resDiv);
+        });
+
+        painel.querySelectorAll('button').forEach(botaoResultado=>{
+          botaoResultado.addEventListener('click', async ()=>{
+            const resultado = resultados[parseInt(botaoResultado.dataset.ri)];
+            const cantor = document.getElementById('conv-seu-nome-unico').value.trim() || 'Convidado(a)';
+            botaoResultado.disabled = true;
+            botaoResultado.textContent = 'Adicionado ✓';
+            await apiAdd({ id: resultado.id, titulo: item.titulo, cantor, addedAt: Date.now() });
+            await renderConvidado();
+            irParaFilaEDestacar(resultado.id);
+          });
+        });
+      }catch(e){
+        painel.innerHTML = '<div style="color:var(--muted); font-size:13px;">Não consegui buscar agora, tente de novo.</div>';
+      }finally{
+        btn.disabled = false;
+        btn.textContent = original;
+      }
     });
+  });
+}
+
+function ligarConfirmarLinkManual(painel, item){
+  painel.querySelector('.btn-confirmar-catalogo').addEventListener('click', async ()=>{
+    const linkInput = painel.querySelector('.cat-input-link-encontrado');
+    const id = extractYouTubeId(linkInput.value.trim());
+    if(!id){
+      alert('Cole um link válido do YouTube (ex: https://www.youtube.com/watch?v=XXXXXXXXXXX)');
+      return;
+    }
+    const cantor = document.getElementById('conv-seu-nome-unico').value.trim() || 'Convidado(a)';
+    await apiAdd({ id, titulo: item.titulo, cantor, addedAt: Date.now() });
+    await renderConvidado();
+    irParaFilaEDestacar(id);
   });
 }
 
