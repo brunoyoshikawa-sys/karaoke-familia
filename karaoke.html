@@ -188,6 +188,13 @@
     0%{background:rgba(46,230,255,0.25);}
     100%{background:transparent;}
   }
+  #conv-toast{
+    position:fixed; left:50%; bottom:24px; transform:translateX(-50%) translateY(20px);
+    background:var(--neon-pink); color:#fff; font-family:'Inter',sans-serif; font-weight:600; font-size:14px;
+    padding:12px 20px; border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,0.4); z-index:100;
+    opacity:0; pointer-events:none; transition:opacity .2s ease, transform .2s ease; text-align:center; max-width:90vw;
+  }
+  #conv-toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
   .btn-indice-az{
     width:22px; height:20px; font-size:11px; font-weight:700; padding:0; border-radius:4px;
     border:none; background:transparent; color:var(--muted); cursor:pointer; font-family:'Inter';
@@ -283,13 +290,11 @@
     <button class="choice-btn" id="btn-ir-palco">🎤 Abrir Palco<small>Arraste esta janela para a TV e deixe em tela cheia</small></button>
     <button class="choice-btn" id="btn-ir-controle">📋 Abrir Controle<small>Fica no notebook — escolher músicas e gerenciar a fila</small></button>
   </div>
-  <div style="color:rgba(255,255,255,0.25); font-size:11px; font-family:'Inter',sans-serif;">v2026-07-20-salas-v1</div>
 </div>
 
 <!-- PALCO (vai para a TV) -->
 <div id="palco" class="hidden">
   <div class="palco-video-col">
-    <div style="position:absolute; bottom:6px; left:8px; z-index:30; color:rgba(255,255,255,0.25); font-size:11px; font-family:'Inter',sans-serif;">v2026-07-17-colunas-v1</div>
     <button id="btn-toggle-sidebar" title="Esconder/mostrar painel lateral">›</button>
     <div id="player-wrap"><div id="ytplayer"></div></div>
     <div id="idle-screen">
@@ -2682,9 +2687,9 @@ async function buscarMusicaInline(){
 
   async function escolher(item){
     const cantor = document.getElementById('conv-seu-nome-unico').value.trim() || 'Convidado(a)';
-    await apiAdd({ id: item.id, titulo: item.titulo, cantor, addedAt: Date.now() });
+    const resultadoAdd = await apiAdd({ id: item.id, titulo: item.titulo, cantor, addedAt: Date.now() });
     await renderConvidado();
-    irParaFilaEDestacar(item.id);
+    irParaFilaEDestacar(item.id, resultadoAdd.queue && resultadoAdd.queue.length);
     input.value = '';
     resultadosEl.innerHTML = '';
   }
@@ -2734,7 +2739,23 @@ function mudarAbaConvidado(aba){
   document.getElementById('conv-secao-fila').classList.toggle('hidden', aba !== 'fila');
 }
 
-function irParaFilaEDestacar(idAdicionado){
+function mostrarToastConvidado(mensagem){
+  let toast = document.getElementById('conv-toast');
+  if(!toast){
+    toast = document.createElement('div');
+    toast.id = 'conv-toast';
+    document.body.appendChild(toast);
+  }
+  toast.textContent = mensagem;
+  clearTimeout(toast._timeoutId);
+  requestAnimationFrame(()=> toast.classList.add('show'));
+  toast._timeoutId = setTimeout(()=> toast.classList.remove('show'), 2600);
+}
+
+function irParaFilaEDestacar(idAdicionado, posicaoNaFila){
+  if(posicaoNaFila){
+    mostrarToastConvidado('🎤 Música adicionada! Você é o Nº ' + posicaoNaFila + ' da fila.');
+  }
   mudarAbaConvidado('fila');
   setTimeout(()=>{
     const item = document.querySelector(`.fila-item[data-song-id="${idAdicionado}"]`);
@@ -2945,10 +2966,10 @@ function renderizarListaCatalogo(itens){
       const original = btn.textContent;
       btn.disabled = true;
       btn.textContent = 'Adicionado ✓';
-      await apiAdd({ id: item.id, titulo: item.titulo, cantor, addedAt: Date.now() });
+      const resultadoAdd = await apiAdd({ id: item.id, titulo: item.titulo, cantor, addedAt: Date.now() });
       await renderConvidado();
       setTimeout(()=>{ btn.disabled = false; btn.textContent = original; }, 1500);
-      irParaFilaEDestacar(item.id);
+      irParaFilaEDestacar(item.id, resultadoAdd.queue && resultadoAdd.queue.length);
     });
   });
 
@@ -3004,9 +3025,9 @@ function renderizarListaCatalogo(itens){
             const cantor = document.getElementById('conv-seu-nome-unico').value.trim() || 'Convidado(a)';
             botaoResultado.disabled = true;
             botaoResultado.textContent = 'Adicionado ✓';
-            await apiAdd({ id: resultado.id, titulo: item.titulo, cantor, addedAt: Date.now() });
+            const resultadoAdd = await apiAdd({ id: resultado.id, titulo: item.titulo, cantor, addedAt: Date.now() });
             await renderConvidado();
-            irParaFilaEDestacar(resultado.id);
+            irParaFilaEDestacar(resultado.id, resultadoAdd.queue && resultadoAdd.queue.length);
           });
         });
       }catch(e){
@@ -3025,9 +3046,9 @@ function ligarConfirmarLinkManual(painel, item){
       return;
     }
     const cantor = document.getElementById('conv-seu-nome-unico').value.trim() || 'Convidado(a)';
-    await apiAdd({ id, titulo: item.titulo, cantor, addedAt: Date.now() });
+    const resultadoAdd = await apiAdd({ id, titulo: item.titulo, cantor, addedAt: Date.now() });
     await renderConvidado();
-    irParaFilaEDestacar(id);
+    irParaFilaEDestacar(id, resultadoAdd.queue && resultadoAdd.queue.length);
   });
 }
 
@@ -3047,7 +3068,7 @@ async function addToQueueConv(){
   btn.textContent = 'Buscando música...';
   const tituloReal = await fetchYouTubeTitle(id);
 
-  await apiAdd({
+  const resultadoAdd = await apiAdd({
     id,
     titulo: tituloReal || 'Música (' + id + ')',
     cantor,
@@ -3057,7 +3078,7 @@ async function addToQueueConv(){
   await renderConvidado();
   btn.disabled = false;
   btn.textContent = original;
-  irParaFilaEDestacar(id);
+  irParaFilaEDestacar(id, resultadoAdd.queue && resultadoAdd.queue.length);
 }
 
 async function renderConvidado(){
