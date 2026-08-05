@@ -87,19 +87,34 @@
 
   #palco-banner-agora{
     position:absolute; top:24px; left:24px; z-index:25;
-    display:flex; align-items:center; gap:12px;
-    background:rgba(11,11,18,0.82); border:1px solid var(--neon-pink); border-radius:10px;
-    padding:10px 20px; font-family:'Inter',sans-serif; backdrop-filter:blur(4px);
+    display:flex; align-items:center; gap:14px;
+    background:linear-gradient(135deg, rgba(255,46,136,0.18), rgba(11,11,18,0.9));
+    border:1px solid rgba(255,46,136,0.55); border-radius:999px;
+    padding:8px 24px 8px 10px; font-family:'Inter',sans-serif;
+    backdrop-filter:blur(6px); box-shadow:0 8px 24px rgba(0,0,0,0.35);
   }
   #palco-banner-agora.hidden{display:none;}
-  #palco-banner-agora .rotulo{
-    color:var(--neon-pink); font-weight:800; font-size:12px; letter-spacing:2px;
+  #palco-banner-agora .icone{
+    display:flex; align-items:center; justify-content:center; flex-shrink:0;
+    width:38px; height:38px; border-radius:50%; background:var(--neon-pink); font-size:18px;
+    animation:pulsoIconeMic 1.8s ease-in-out infinite;
   }
-  #palco-banner-agora #palco-banner-cantor{color:#fff; font-weight:700; font-size:22px;}
+  #palco-banner-agora .texto{display:flex; flex-direction:column; line-height:1.2;}
+  #palco-banner-agora .rotulo{
+    color:var(--neon-pink); font-weight:800; font-size:11px; letter-spacing:2px;
+  }
+  #palco-banner-agora #palco-banner-cantor{color:#fff; font-weight:700; font-size:21px;}
   #palco-banner-agora.trocou{animation:pulsoBannerAgora 1.4s ease;}
   @keyframes pulsoBannerAgora{
-    0%{transform:scale(1.1); box-shadow:0 0 0 8px rgba(255,46,136,0.35);}
+    0%{transform:scale(1.08); box-shadow:0 0 0 8px rgba(255,46,136,0.35);}
     100%{transform:scale(1); box-shadow:0 0 0 0 rgba(255,46,136,0);}
+  }
+  @keyframes pulsoIconeMic{
+    0%,100%{box-shadow:0 0 0 0 rgba(255,46,136,0.55);}
+    50%{box-shadow:0 0 0 7px rgba(255,46,136,0);}
+  }
+  @media (max-width: 640px){
+    #palco-banner-agora{display:none !important;}
   }
 
   .palco-sidebar{
@@ -331,7 +346,13 @@
 <div id="palco" class="hidden">
   <div class="palco-video-col">
     <button id="btn-toggle-sidebar" title="Esconder/mostrar painel lateral">›</button>
-    <div id="palco-banner-agora" class="hidden"><span class="rotulo">AGORA</span><span id="palco-banner-cantor"></span></div>
+    <div id="palco-banner-agora" class="hidden">
+      <div class="icone">🎤</div>
+      <div class="texto">
+        <span class="rotulo">AGORA</span>
+        <span id="palco-banner-cantor"></span>
+      </div>
+    </div>
     <div id="player-wrap"><div id="ytplayer"></div></div>
     <div id="idle-screen">
       <div class="marquee">KARAOKÊ</div>
