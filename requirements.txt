@@ -1,0 +1,3 @@
+# Este app usa só a biblioteca padrão do Python (http.server, json, etc.)
+# Nenhuma dependência externa é necessária. Este arquivo existe apenas para
+# que serviços de hospedagem como o Render reconheçam o projeto como Python.
