@@ -272,9 +272,9 @@
   .fila-item .titulo{font-weight:600; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
   .fila-item .cantor{color:var(--neon-cyan); font-size:12px;}
   .fila-item .acoes{display:flex; gap:4px;}
-  .fila-item .drag-handle{cursor:grab; color:var(--muted); font-size:16px; padding:0 2px; flex-shrink:0;}
+  .fila-item .drag-handle{cursor:grab; color:var(--muted); font-size:16px; padding:0 6px; flex-shrink:0; touch-action:none;}
   .fila-item .drag-handle:active{cursor:grabbing;}
-  .fila-item.arrastando{opacity:0.4;}
+  .fila-item.arrastando{opacity:0.85; position:relative; z-index:10; box-shadow:0 6px 18px rgba(0,0,0,0.5); cursor:grabbing;}
   .fila-item.drop-alvo{border-color:var(--neon-cyan); border-style:dashed;}
   .fila-vazia-msg{color:var(--muted); text-align:center; padding:24px; font-size:14px;}
   .link-palco{margin-top:auto; font-size:12px; color:var(--muted); display:flex; align-items:center; gap:8px; flex-wrap:wrap;}
@@ -2668,7 +2668,6 @@ async function renderControle(){
   state.queue.forEach((item, i)=>{
     const div = document.createElement('div');
     div.className = 'fila-item';
-    div.draggable = true;
     div.dataset.index = i;
     div.innerHTML = `
       <div class="drag-handle" title="Arrastar para reordenar">⠿</div>
@@ -2699,36 +2698,69 @@ async function renderControle(){
 
 let arrastandoIndex = null;
 
+// Usa Pointer Events (em vez da API nativa de drag-and-drop do HTML5) porque
+// funciona de forma confiável tanto com mouse/trackpad quanto com toque —
+// a API nativa de drag depende do navegador reconhecer um gesto de arrastar
+// no nível do sistema operacional, o que falha silenciosamente em vários
+// trackpads e em telas de toque (o cursor de "mãozinha" é só um estilo CSS
+// do hover, não significa que o gesto de arrastar foi reconhecido).
 function ligarDragAndDropFila(filaEl){
-  filaEl.querySelectorAll('.fila-item').forEach(div=>{
-    div.addEventListener('dragstart', (e)=>{
-      if(!e.target.closest('.drag-handle')){ e.preventDefault(); return; }
+  const linhas = Array.from(filaEl.querySelectorAll('.fila-item'));
+
+  function limparDestaques(){
+    linhas.forEach(l=> l.classList.remove('drop-alvo'));
+  }
+
+  function encontrarLinhaSobPonteiro(x, y){
+    const el = document.elementFromPoint(x, y);
+    return el ? el.closest('.fila-item') : null;
+  }
+
+  linhas.forEach(div=>{
+    const handle = div.querySelector('.drag-handle');
+    if(!handle) return;
+
+    let yInicial = 0;
+
+    handle.addEventListener('pointerdown', (e)=>{
+      e.preventDefault();
       arrastandoIndex = parseInt(div.dataset.index);
+      yInicial = e.clientY;
       div.classList.add('arrastando');
-      e.dataTransfer.effectAllowed = 'move';
+      handle.setPointerCapture(e.pointerId);
     });
-    div.addEventListener('dragend', ()=>{
-      div.classList.remove('arrastando');
-      filaEl.querySelectorAll('.drop-alvo').forEach(el=> el.classList.remove('drop-alvo'));
-      arrastandoIndex = null;
-    });
-    div.addEventListener('dragover', (e)=>{
+
+    handle.addEventListener('pointermove', (e)=>{
       if(arrastandoIndex === null) return;
-      e.preventDefault();
-      div.classList.add('drop-alvo');
+      div.style.transform = `translateY(${e.clientY - yInicial}px)`;
+      limparDestaques();
+      const alvoRow = encontrarLinhaSobPonteiro(e.clientX, e.clientY);
+      if(alvoRow && parseInt(alvoRow.dataset.index) !== arrastandoIndex){
+        alvoRow.classList.add('drop-alvo');
+      }
     });
-    div.addEventListener('dragleave', ()=>{
-      div.classList.remove('drop-alvo');
-    });
-    div.addEventListener('drop', async (e)=>{
-      e.preventDefault();
-      div.classList.remove('drop-alvo');
-      const alvoIndex = parseInt(div.dataset.index);
+
+    async function finalizarArraste(e){
+      if(arrastandoIndex === null) return;
       const origemIndex = arrastandoIndex;
       arrastandoIndex = null;
-      if(origemIndex === null || alvoIndex === origemIndex) return;
+      div.classList.remove('arrastando');
+      div.style.transform = '';
+      limparDestaques();
+      const alvoRow = encontrarLinhaSobPonteiro(e.clientX, e.clientY);
+      if(!alvoRow) return;
+      const alvoIndex = parseInt(alvoRow.dataset.index);
+      if(alvoIndex === origemIndex) return;
       await apiReorder(origemIndex, alvoIndex);
       renderControle();
+    }
+
+    handle.addEventListener('pointerup', finalizarArraste);
+    handle.addEventListener('pointercancel', ()=>{
+      arrastandoIndex = null;
+      div.classList.remove('arrastando');
+      div.style.transform = '';
+      limparDestaques();
     });
   });
 }
