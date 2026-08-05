@@ -410,6 +410,19 @@ class KaraokeHandler(http.server.SimpleHTTPRequestHandler):
             self._send_json(state)
             return
 
+        if parsed.path == '/api/queue/reorder':
+            with lock:
+                _, room = get_room(sala_param)
+                de = body.get('from')
+                para = body.get('to')
+                q = room['queue']
+                if isinstance(de, int) and isinstance(para, int) and 0 <= de < len(q) and 0 <= para < len(q):
+                    item = q.pop(de)
+                    q.insert(para, item)
+                state = {"queue": room['queue'], "current": room['current']}
+            self._send_json(state)
+            return
+
         if parsed.path == '/api/catalogo/add':
             with lock_catalogo:
                 catalogo.append({
