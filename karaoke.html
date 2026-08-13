@@ -2016,15 +2016,15 @@ function onPlayerStateChange(e){
 }
 
 let timeoutAutoPular = null;
-
-let janelaYoutubeAberta = null;
-let intervalMonitorJanela = null;
+let intervalContadorPular = null;
 
 function onPlayerError(e){
   // codigos 101/150 = dono do video bloqueou a incorporacao (embed) em outros sites;
   // 2 = ID invalido; 5 = erro do player HTML5; 100 = video removido/privado.
   mostrarAvisoErroVideo();
 }
+
+const SEGUNDOS_AUTO_PULAR_BLOQUEADO = 8;
 
 function mostrarAvisoErroVideo(){
   const idBloqueado = ultimoIdCarregado;
@@ -2038,44 +2038,58 @@ function mostrarAvisoErroVideo(){
     document.querySelector('.palco-video-col').appendChild(aviso);
   }
 
+  // Nao da pra tocar esse video incorporado de jeito nenhum (o dono bloqueou),
+  // e abrir o YouTube numa aba/janela separada obrigava a pessoa a "projetar"
+  // aquela outra janela e depois fechar pra voltar — por isso aqui a fila
+  // simplesmente pula sozinha pra proxima, sem nunca sair da tela do Palco.
+  // Quem realmente quiser assistir esse video especifico pode escanear o QR
+  // e ver no proprio celular, sem interromper o que esta na TV.
   aviso.innerHTML = `
     <div style="font-size:22px; font-weight:600;">⚠️ Este vídeo não pode ser tocado aqui</div>
-    <div id="msg-erro-video" style="color:#8886A3; font-size:15px; max-width:480px;">O dono do vídeo bloqueou a reprodução incorporada. Abrindo direto no YouTube, numa outra janela — quando a pessoa terminar de cantar, clique em "Próxima música" aqui embaixo.</div>
+    <div id="msg-erro-video" style="color:#8886A3; font-size:15px; max-width:480px;">O dono do vídeo bloqueou a reprodução incorporada. Pulando pra próxima em <span id="contador-pular">${SEGUNDOS_AUTO_PULAR_BLOQUEADO}</span>s...</div>
     <div style="display:flex; gap:12px;">
-      <button id="btn-assistir-youtube" style="font-family:Inter; font-weight:600; font-size:14px; cursor:pointer; border:none; border-radius:8px; padding:12px 20px; background:#FF2E88; color:#fff;">▶ Abrir no YouTube de novo</button>
-      <button id="btn-pular-agora" style="font-family:Inter; font-weight:600; font-size:14px; cursor:pointer; border:1px solid #29283A; border-radius:8px; padding:12px 20px; background:transparent; color:#F5F3FF;">⏭ Próxima música</button>
+      <button id="btn-pular-agora" style="font-family:Inter; font-weight:600; font-size:14px; cursor:pointer; border:none; border-radius:8px; padding:12px 20px; background:#FF2E88; color:#fff;">⏭ Pular agora</button>
+      <button id="btn-ver-celular" style="font-family:Inter; font-weight:600; font-size:14px; cursor:pointer; border:1px solid #29283A; border-radius:8px; padding:12px 20px; background:transparent; color:#F5F3FF;">📱 Assistir no celular</button>
+    </div>
+    <div id="qr-celular-wrap" class="hidden" style="display:flex; flex-direction:column; align-items:center; gap:10px;">
+      <div id="qr-celular-box" style="width:140px; height:140px; background:#fff; border-radius:10px; padding:8px;"></div>
+      <div style="color:#8886A3; font-size:13px; max-width:320px;">Aponte a câmera do celular pra assistir por lá, sem interromper o Palco</div>
     </div>
   `;
   aviso.style.display = 'flex';
 
   clearTimeout(timeoutAutoPular);
-  clearInterval(window._intervalContador);
-  clearInterval(intervalMonitorJanela);
+  clearInterval(intervalContadorPular);
 
-  function abrirVideo(){
-    if(!idBloqueado) return;
-    janelaYoutubeAberta = window.open('https://www.youtube.com/watch?v=' + idBloqueado, '_blank');
-    const msgEl = document.getElementById('msg-erro-video');
-    if(!janelaYoutubeAberta && msgEl){
-      // navegador bloqueou o popup automatico — precisa do clique manual no botao
-      msgEl.textContent = 'O navegador bloqueou a abertura automática. Clique em "Abrir no YouTube de novo" para assistir.';
-    }
-    // OBS: o YouTube usa uma politica de seguranca (COOP) que impede detectar de forma
-    // confiavel quando essa janela e fechada — por isso o avanco pra proxima musica
-    // e sempre manual aqui, clicando em "Proxima musica".
-  }
-
-  // tenta abrir automaticamente assim que o erro aparece
-  abrirVideo();
+  let segundosRestantes = SEGUNDOS_AUTO_PULAR_BLOQUEADO;
+  intervalContadorPular = setInterval(()=>{
+    segundosRestantes -= 1;
+    const contadorEl = document.getElementById('contador-pular');
+    if(contadorEl) contadorEl.textContent = Math.max(segundosRestantes, 0);
+    if(segundosRestantes <= 0) clearInterval(intervalContadorPular);
+  }, 1000);
+  timeoutAutoPular = setTimeout(()=>{
+    avancarNoPalco();
+  }, SEGUNDOS_AUTO_PULAR_BLOQUEADO * 1000);
 
   document.getElementById('btn-pular-agora').addEventListener('click', ()=>{
     clearTimeout(timeoutAutoPular);
-    clearInterval(window._intervalContador);
-    clearInterval(intervalMonitorJanela);
+    clearInterval(intervalContadorPular);
     avancarNoPalco();
   });
 
-  document.getElementById('btn-assistir-youtube').addEventListener('click', abrirVideo);
+  document.getElementById('btn-ver-celular').addEventListener('click', ()=>{
+    // pausa o auto-pular pra dar tempo de escanear e a musica nao sumir da fila antes da hora
+    clearTimeout(timeoutAutoPular);
+    clearInterval(intervalContadorPular);
+    const msgEl = document.getElementById('msg-erro-video');
+    if(msgEl) msgEl.textContent = 'O dono do vídeo bloqueou a reprodução incorporada. Auto-pular pausado — clique em "Pular agora" quando terminar de assistir pelo celular.';
+    if(!idBloqueado) return;
+    const wrap = document.getElementById('qr-celular-wrap');
+    const box = document.getElementById('qr-celular-box');
+    renderizarQrEm(box, 'https://www.youtube.com/watch?v=' + idBloqueado);
+    wrap.classList.remove('hidden');
+  });
 }
 
 function showPlaying(id){
@@ -2085,8 +2099,7 @@ function showPlaying(id){
   const aviso = document.getElementById('erro-video-aviso');
   if(aviso) aviso.style.display = 'none';
   clearTimeout(timeoutAutoPular);
-  clearInterval(window._intervalContador);
-  clearInterval(intervalMonitorJanela);
+  clearInterval(intervalContadorPular);
   if(playerReady) ytPlayer.loadVideoById(id);
   ultimoIdCarregado = id;
 }
@@ -2097,8 +2110,7 @@ function showIdle(){
   const aviso = document.getElementById('erro-video-aviso');
   if(aviso) aviso.style.display = 'none';
   clearTimeout(timeoutAutoPular);
-  clearInterval(window._intervalContador);
-  clearInterval(intervalMonitorJanela);
+  clearInterval(intervalContadorPular);
   if(playerReady && ytPlayer && typeof ytPlayer.stopVideo === 'function'){
     ytPlayer.stopVideo(); // essencial — sem isso o audio continua tocando mesmo com o video escondido
   }
@@ -2182,17 +2194,7 @@ function obterHostParaConvidados(){
   return localStorage.getItem('karaokeUltimoIP') || null;
 }
 
-function atualizarQrPalco(){
-  const host = obterHostParaConvidados();
-  const box = document.getElementById('palco-qr-box');
-  if(!host){
-    box.innerHTML = '<span>Defina o IP<br>no Controle<br>para gerar o QR</span>';
-    ultimaUrlQrPalco = null;
-    return;
-  }
-  const porta = window.location.port ? (':' + window.location.port) : '';
-  const url = window.location.protocol + '//' + host + porta + '/' + getNomeArquivo() + '?view=convidado&sala=' + encodeURIComponent(obterSalaAtual());
-  if(url === ultimaUrlQrPalco) return; // evita regerar o mesmo QR a cada poll
+function renderizarQrEm(box, url){
   try{
     const qr = gerarObjetoQr(url);
     const cellSize = 5;
@@ -2206,10 +2208,25 @@ function atualizarQrPalco(){
     svg.style.width = '100%';
     svg.style.height = '100%';
     svg.style.display = 'block';
-    ultimaUrlQrPalco = url;
+    return true;
   }catch(err){
     box.innerHTML = '<span>Erro ao gerar QR</span>';
+    return false;
   }
+}
+
+function atualizarQrPalco(){
+  const host = obterHostParaConvidados();
+  const box = document.getElementById('palco-qr-box');
+  if(!host){
+    box.innerHTML = '<span>Defina o IP<br>no Controle<br>para gerar o QR</span>';
+    ultimaUrlQrPalco = null;
+    return;
+  }
+  const porta = window.location.port ? (':' + window.location.port) : '';
+  const url = window.location.protocol + '//' + host + porta + '/' + getNomeArquivo() + '?view=convidado&sala=' + encodeURIComponent(obterSalaAtual());
+  if(url === ultimaUrlQrPalco) return; // evita regerar o mesmo QR a cada poll
+  if(renderizarQrEm(box, url)) ultimaUrlQrPalco = url;
 }
 
 
