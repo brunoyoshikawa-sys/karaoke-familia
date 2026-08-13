@@ -2015,19 +2015,34 @@ function onPlayerStateChange(e){
   }
 }
 
-let timeoutAutoPular = null;
-let intervalContadorPular = null;
-
 function onPlayerError(e){
-  // codigos 101/150 = dono do video bloqueou a incorporacao (embed) em outros sites;
-  // 2 = ID invalido; 5 = erro do player HTML5; 100 = video removido/privado.
-  mostrarAvisoErroVideo();
+  // codigos 101/150 = dono do video bloqueou a incorporacao (embed) em outros
+  // sites — o YouTube recusa tocar ESSE video especifico dentro de um iframe,
+  // em qualquer site (nao e algo que da pra contornar via codigo); os outros
+  // codigos (2 = ID invalido, 5 = erro do player HTML5, 100 = video
+  // removido/privado) significam que o video nao existe/nao toca em lugar
+  // nenhum, entao nao ha motivo pra mandar pro YouTube — so resta pular.
+  if(e.data === 101 || e.data === 150){
+    tocarBloqueadoNoYoutube();
+  }else{
+    mostrarAvisoVideoIndisponivel();
+  }
 }
 
-const SEGUNDOS_AUTO_PULAR_BLOQUEADO = 8;
-
-function mostrarAvisoErroVideo(){
+function tocarBloqueadoNoYoutube(){
   const idBloqueado = ultimoIdCarregado;
+  if(!idBloqueado) return;
+  // Em vez de abrir uma aba/janela separada (que obrigava a "projetar" essa
+  // outra janela e depois fechar pra voltar), manda a PROPRIA aba do Palco
+  // pro YouTube — mesma tela, sem popup nenhum. Avança a fila por baixo dos
+  // panos antes de sair (com sendBeacon, que garante o envio mesmo saindo da
+  // pagina em seguida), pra quando o anfitriao apertar "Voltar" no navegador
+  // o Palco ja estar pronto direto na proxima musica.
+  navigator.sendBeacon('/api/queue/advance?sala=' + encodeURIComponent(obterSalaAtual()));
+  window.location.href = 'https://www.youtube.com/watch?v=' + idBloqueado + '&autoplay=1';
+}
+
+function mostrarAvisoVideoIndisponivel(){
   let aviso = document.getElementById('erro-video-aviso');
   if(!aviso){
     aviso = document.createElement('div');
@@ -2038,58 +2053,14 @@ function mostrarAvisoErroVideo(){
     document.querySelector('.palco-video-col').appendChild(aviso);
   }
 
-  // Nao da pra tocar esse video incorporado de jeito nenhum (o dono bloqueou),
-  // e abrir o YouTube numa aba/janela separada obrigava a pessoa a "projetar"
-  // aquela outra janela e depois fechar pra voltar — por isso aqui a fila
-  // simplesmente pula sozinha pra proxima, sem nunca sair da tela do Palco.
-  // Quem realmente quiser assistir esse video especifico pode escanear o QR
-  // e ver no proprio celular, sem interromper o que esta na TV.
   aviso.innerHTML = `
-    <div style="font-size:22px; font-weight:600;">⚠️ Este vídeo não pode ser tocado aqui</div>
-    <div id="msg-erro-video" style="color:#8886A3; font-size:15px; max-width:480px;">O dono do vídeo bloqueou a reprodução incorporada. Pulando pra próxima em <span id="contador-pular">${SEGUNDOS_AUTO_PULAR_BLOQUEADO}</span>s...</div>
-    <div style="display:flex; gap:12px;">
-      <button id="btn-pular-agora" style="font-family:Inter; font-weight:600; font-size:14px; cursor:pointer; border:none; border-radius:8px; padding:12px 20px; background:#FF2E88; color:#fff;">⏭ Pular agora</button>
-      <button id="btn-ver-celular" style="font-family:Inter; font-weight:600; font-size:14px; cursor:pointer; border:1px solid #29283A; border-radius:8px; padding:12px 20px; background:transparent; color:#F5F3FF;">📱 Assistir no celular</button>
-    </div>
-    <div id="qr-celular-wrap" class="hidden" style="display:flex; flex-direction:column; align-items:center; gap:10px;">
-      <div id="qr-celular-box" style="width:140px; height:140px; background:#fff; border-radius:10px; padding:8px;"></div>
-      <div style="color:#8886A3; font-size:13px; max-width:320px;">Aponte a câmera do celular pra assistir por lá, sem interromper o Palco</div>
-    </div>
+    <div style="font-size:22px; font-weight:600;">⚠️ Este vídeo não está disponível</div>
+    <div style="color:#8886A3; font-size:15px; max-width:480px;">Pode ter sido removido ou marcado como privado pelo dono — não dá pra assistir em lugar nenhum. Escolha outra música ou pule esta.</div>
+    <button id="btn-pular-agora" style="font-family:Inter; font-weight:600; font-size:14px; cursor:pointer; border:none; border-radius:8px; padding:12px 20px; background:#FF2E88; color:#fff;">⏭ Pular esta música</button>
   `;
   aviso.style.display = 'flex';
 
-  clearTimeout(timeoutAutoPular);
-  clearInterval(intervalContadorPular);
-
-  let segundosRestantes = SEGUNDOS_AUTO_PULAR_BLOQUEADO;
-  intervalContadorPular = setInterval(()=>{
-    segundosRestantes -= 1;
-    const contadorEl = document.getElementById('contador-pular');
-    if(contadorEl) contadorEl.textContent = Math.max(segundosRestantes, 0);
-    if(segundosRestantes <= 0) clearInterval(intervalContadorPular);
-  }, 1000);
-  timeoutAutoPular = setTimeout(()=>{
-    avancarNoPalco();
-  }, SEGUNDOS_AUTO_PULAR_BLOQUEADO * 1000);
-
-  document.getElementById('btn-pular-agora').addEventListener('click', ()=>{
-    clearTimeout(timeoutAutoPular);
-    clearInterval(intervalContadorPular);
-    avancarNoPalco();
-  });
-
-  document.getElementById('btn-ver-celular').addEventListener('click', ()=>{
-    // pausa o auto-pular pra dar tempo de escanear e a musica nao sumir da fila antes da hora
-    clearTimeout(timeoutAutoPular);
-    clearInterval(intervalContadorPular);
-    const msgEl = document.getElementById('msg-erro-video');
-    if(msgEl) msgEl.textContent = 'O dono do vídeo bloqueou a reprodução incorporada. Auto-pular pausado — clique em "Pular agora" quando terminar de assistir pelo celular.';
-    if(!idBloqueado) return;
-    const wrap = document.getElementById('qr-celular-wrap');
-    const box = document.getElementById('qr-celular-box');
-    renderizarQrEm(box, 'https://www.youtube.com/watch?v=' + idBloqueado);
-    wrap.classList.remove('hidden');
-  });
+  document.getElementById('btn-pular-agora').addEventListener('click', avancarNoPalco);
 }
 
 function showPlaying(id){
@@ -2098,8 +2069,6 @@ function showPlaying(id){
   document.getElementById('palco').classList.remove('idle-ativo');
   const aviso = document.getElementById('erro-video-aviso');
   if(aviso) aviso.style.display = 'none';
-  clearTimeout(timeoutAutoPular);
-  clearInterval(intervalContadorPular);
   if(playerReady) ytPlayer.loadVideoById(id);
   ultimoIdCarregado = id;
 }
@@ -2109,8 +2078,6 @@ function showIdle(){
   document.getElementById('palco').classList.add('idle-ativo');
   const aviso = document.getElementById('erro-video-aviso');
   if(aviso) aviso.style.display = 'none';
-  clearTimeout(timeoutAutoPular);
-  clearInterval(intervalContadorPular);
   if(playerReady && ytPlayer && typeof ytPlayer.stopVideo === 'function'){
     ytPlayer.stopVideo(); // essencial — sem isso o audio continua tocando mesmo com o video escondido
   }
