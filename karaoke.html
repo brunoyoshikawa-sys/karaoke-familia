@@ -22,44 +22,6 @@
   html,body{margin:0;padding:0;min-height:100%;background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;}
   .hidden{display:none !important;}
 
-  /* ---------- Escolha de visão ---------- */
-  #chooser{
-    height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:28px;
-    background:radial-gradient(ellipse at 50% 30%, #1c1a2c 0%, var(--bg) 65%);
-  }
-  #chooser h1{
-    font-family:'Bebas Neue',sans-serif; font-size:64px; letter-spacing:3px; margin:0;
-    background:linear-gradient(90deg,var(--neon-pink),var(--neon-cyan));
-    -webkit-background-clip:text; background-clip:text; color:transparent;
-  }
-  .choice-row{display:flex; gap:24px;}
-  .choice-btn{
-    font-family:'Inter'; font-weight:600; font-size:16px; color:var(--text);
-    background:var(--bg-raised); border:1px solid var(--line); border-radius:12px;
-    padding:22px 30px; cursor:pointer; text-decoration:none; display:block; min-width:220px; text-align:center;
-    transition:border-color .15s ease, transform .15s ease;
-  }
-  .choice-btn:hover{border-color:var(--neon-pink); transform:translateY(-2px);}
-  .choice-btn small{display:block; color:var(--muted); font-weight:400; margin-top:6px; font-size:13px;}
-
-  .chooser-ip-panel{
-    background:var(--bg-raised); border:1px solid var(--line); border-radius:14px;
-    padding:18px 22px; max-width:420px; width:100%; display:flex; flex-direction:column; gap:10px;
-  }
-  .chooser-ip-panel label{font-size:13px; color:var(--muted); line-height:1.4;}
-  .chooser-ip-row{display:flex; gap:8px;}
-  .chooser-ip-row input{
-    background:#0e0d17; border:1px solid var(--line); border-radius:8px; color:var(--text);
-    padding:10px 12px; font-size:14px; font-family:'Inter'; flex:1; min-width:0;
-  }
-  .chooser-ip-row input:focus{outline:none; border-color:var(--neon-cyan);}
-
-  .chooser-sala-panel{
-    display:flex; align-items:center; gap:14px; color:var(--muted); font-size:13px;
-    font-family:'Inter',sans-serif;
-  }
-  .chooser-sala-panel b{color:var(--neon-cyan); letter-spacing:2px; font-size:16px;}
-
   /* ---------- PALCO ---------- */
   #palco{
     height:100vh; width:100vw; background:#000; overflow:hidden;
@@ -134,6 +96,13 @@
     display:flex; align-items:center; justify-content:center;
   }
   #btn-toggle-sidebar:hover{ color:var(--neon-pink); }
+  #btn-abrir-controle{
+    position:absolute; bottom:20px; left:24px; z-index:25;
+    font-family:'Inter',sans-serif; font-weight:600; font-size:13px; color:var(--muted);
+    background:rgba(21,20,31,0.75); border:1px solid var(--line); border-radius:8px;
+    padding:8px 14px; cursor:pointer; opacity:0.55; transition:opacity .15s ease, color .15s ease, border-color .15s ease;
+  }
+  #btn-abrir-controle:hover{opacity:1; color:var(--text); border-color:var(--neon-pink);}
   .palco-video-col{ position:relative; }
   .palco-qr-area{display:flex; flex-direction:column; align-items:center; gap:10px; flex-shrink:0;}
   #palco-qr-box{
@@ -308,44 +277,16 @@
     .ip-row input, .ip-row button{width:100%;}
     .link-palco{flex-direction:column; align-items:flex-start;}
     .link-palco code{word-break:break-all;}
-    #chooser{padding:20px; gap:20px;}
-    #chooser h1{font-size:44px; text-align:center;}
-    .choice-row{flex-direction:column; width:100%; max-width:340px;}
-    .chooser-ip-panel{max-width:340px;}
-    .chooser-ip-row{flex-direction:column;}
-    .chooser-ip-row input{max-width:none !important;}
   }
 </style>
 </head>
 <body>
 
-<!-- Tela inicial: escolher a visão -->
-<div id="chooser">
-  <h1>KARAOKÊ &middot; FILA</h1>
-
-  <div class="chooser-ip-panel">
-    <label for="chooser-ip">IP do notebook (deixe "localhost" se estiver abrindo neste mesmo computador)</label>
-    <div class="chooser-ip-row">
-      <input type="text" id="chooser-ip" placeholder="ex: 192.168.0.214">
-      <input type="text" id="chooser-porta" placeholder="porta" style="max-width:90px;">
-    </div>
-  </div>
-
-  <div class="chooser-sala-panel">
-    <span>Sua sala: <b id="chooser-sala-codigo">------</b></span>
-    <button class="btn-ghost" id="btn-nova-sala" type="button">Gerar nova sala</button>
-  </div>
-
-  <div class="choice-row">
-    <button class="choice-btn" id="btn-ir-palco">🎤 Abrir Palco<small>Arraste esta janela para a TV e deixe em tela cheia</small></button>
-    <button class="choice-btn" id="btn-ir-controle">📋 Abrir Controle<small>Fica no notebook — escolher músicas e gerenciar a fila</small></button>
-  </div>
-</div>
-
 <!-- PALCO (vai para a TV) -->
 <div id="palco" class="hidden">
   <div class="palco-video-col">
     <button id="btn-toggle-sidebar" title="Esconder/mostrar painel lateral">›</button>
+    <button id="btn-abrir-controle" title="Abrir o Controle numa nova aba, para gerenciar a fila">⚙️ Controle</button>
     <div id="palco-banner-agora" class="hidden">
       <div class="icone">🎤</div>
       <div class="texto">
@@ -457,6 +398,11 @@
   <div class="link-palco">
     Link do Palco (abrir na TV): <code id="link-palco-txt"></code>
     <button class="btn-ghost" id="btn-copiar-link">Copiar link</button>
+  </div>
+  <div class="link-palco">
+    Sala atual: <code id="controle-sala-codigo"></code>
+    <button class="btn-ghost" id="btn-controle-nova-sala" type="button">Gerar nova sala</button>
+    <small style="width:100%; color:var(--muted);">Começa uma fila nova e vazia — se o Palco já estiver aberto, atualize a página dele também.</small>
   </div>
 </div>
 
@@ -1983,22 +1929,27 @@ if(window.location.protocol === 'file:'){
 }
 
 if(view === 'palco'){
-  document.getElementById('chooser').classList.add('hidden');
   document.getElementById('palco').classList.remove('hidden');
   initPalco();
 }else if(view === 'controle'){
-  document.getElementById('chooser').classList.add('hidden');
   document.getElementById('controle').classList.remove('hidden');
   initControle();
 }else if(view === 'convidado'){
-  document.getElementById('chooser').classList.add('hidden');
   document.getElementById('convidado').classList.remove('hidden');
   initConvidado();
 }else{
-  initChooser();
+  // Ninguém escolhe explicitamente "view" ao entrar no site pela primeira vez —
+  // manda direto pro Palco (o que dá aquele efeito imediato de "abriu, já era o
+  // karaokê"), reaproveitando a sala salva neste navegador (ou criando uma nova).
+  // O Controle fica a um clique discreto dentro da própria tela do Palco.
+  let salaAtual = localStorage.getItem('karaokeSalaAtual');
+  if(!salaAtual){
+    salaAtual = gerarCodigoSala();
+    localStorage.setItem('karaokeSalaAtual', salaAtual);
+  }
+  window.location.replace(getNomeArquivo() + '?view=palco&sala=' + salaAtual);
 }
 
-/* ================= TELA INICIAL (escolher IP + view) ================= */
 function pareceEnderecoDeRedeLocal(host){
   if(!host) return true;
   if(host === 'localhost' || host === '127.0.0.1') return true;
@@ -2016,89 +1967,23 @@ function gerarCodigoSala(){
   return s;
 }
 
-function initChooser(){
-  const ipInput = document.getElementById('chooser-ip');
-  const portaInput = document.getElementById('chooser-porta');
-  const currentHost = window.location.hostname;
-  const ehRedeLocal = pareceEnderecoDeRedeLocal(currentHost);
-
-  // cada tela inicial tem sua propria sala — assim quem abre o link publico do
-  // zero nao cai na mesma fila de outra pessoa. Se essa aba/navegador ja tinha
-  // uma sala em andamento, reaproveita (pra nao perder o link no meio da festa
-  // por causa de um F5); "Gerar nova sala" comeca do zero quando quiser.
-  const salaCodigoEl = document.getElementById('chooser-sala-codigo');
-  let salaAtual = localStorage.getItem('karaokeSalaAtual');
-  if(!salaAtual){
-    salaAtual = gerarCodigoSala();
-    localStorage.setItem('karaokeSalaAtual', salaAtual);
-  }
-  salaCodigoEl.textContent = salaAtual;
-
-  document.getElementById('btn-nova-sala').addEventListener('click', ()=>{
-    salaAtual = gerarCodigoSala();
-    localStorage.setItem('karaokeSalaAtual', salaAtual);
-    salaCodigoEl.textContent = salaAtual;
-  });
-
-  if(!ehRedeLocal){
-    // Hospedado na internet (ex: Render) — nao existe "IP da rede" pra digitar,
-    // o proprio endereco atual ja e o link certo pra todo mundo.
-    document.querySelector('.chooser-ip-panel').classList.add('hidden');
-
-    function irParaHospedado(destino){
-      const url = window.location.origin + '/' + getNomeArquivo() + '?view=' + destino + '&sala=' + salaAtual;
-      const nomeJanela = destino === 'palco' ? 'KaraokePalco' : 'KaraokeControle';
-      window.open(url, nomeJanela, 'noopener,width=1280,height=800,menubar=no,toolbar=no,location=no,status=no');
-    }
-    document.getElementById('btn-ir-palco').addEventListener('click', ()=> irParaHospedado('palco'));
-    document.getElementById('btn-ir-controle').addEventListener('click', ()=> irParaHospedado('controle'));
-    return;
-  }
-
-  const savedIp = localStorage.getItem('karaokeChooserIP');
-  const isLocal = currentHost === 'localhost' || currentHost === '127.0.0.1' || currentHost === '';
-
-  if(!isLocal){
-    // já está acessando por um IP (ex: veio de um link direto) — usa o mesmo
-    ipInput.value = currentHost;
-  }else if(savedIp){
-    ipInput.value = savedIp;
-  }else{
-    // não preenche o valor — só mostra "localhost" como dica (placeholder),
-    // assim dá pra colar o IP direto sem precisar apagar nada antes
-    ipInput.value = '';
-    ipInput.placeholder = 'localhost';
-  }
-
-  portaInput.value = window.location.port || '8000';
-
-  // pergunta pro proprio servidor qual e o IP dele na rede — assim nao precisa
-  // digitar nada nem lembrar de nada, o servidor ja conta a verdade.
+// pergunta pro proprio servidor qual e o IP dele na rede local — assim o QR
+// de convidados do Palco e o painel de convidados do Controle ja vem
+// preenchidos sozinhos, sem precisar digitar nada (só é preciso perguntar
+// isso quando acessado por "localhost", já que abrir direto por um IP real
+// da rede — como o "Ligar Karaoke.command" já faz — dispensa essa etapa).
+function detectarEGuardarIpLocal(){
+  if(!pareceEnderecoDeRedeLocal(window.location.hostname)) return;
   fetch('/api/serverinfo', {cache: 'no-store'})
     .then(r => r.ok ? r.json() : null)
     .then(info => {
       if(!info || !info.ip) return;
-      ipInput.value = info.ip;
-      portaInput.value = info.port || portaInput.value;
-      localStorage.setItem('karaokeChooserIP', info.ip);
-      localStorage.setItem('karaokeUltimoIP', info.ip); // usado tambem pelo QR do Palco/Controle
+      localStorage.setItem('karaokeUltimoIP', info.ip);
     })
     .catch(()=>{
       // sem servidor respondendo (ex: abriu o arquivo direto, sem rodar o server.py) —
-      // mantem o que ja foi preenchido acima como alternativa
+      // o painel de convidados do Controle continua com a opção de digitar o IP na mão
     });
-
-  function irPara(destino){
-    const ip = ipInput.value.trim() || 'localhost';
-    const porta = portaInput.value.trim() || '8000';
-    localStorage.setItem('karaokeChooserIP', ip);
-    const url = 'http://' + ip + ':' + porta + '/' + getNomeArquivo() + '?view=' + destino + '&sala=' + salaAtual;
-    const nomeJanela = destino === 'palco' ? 'KaraokePalco' : 'KaraokeControle';
-    window.open(url, nomeJanela, 'noopener,width=1280,height=800,menubar=no,toolbar=no,location=no,status=no');
-  }
-
-  document.getElementById('btn-ir-palco').addEventListener('click', ()=> irPara('palco'));
-  document.getElementById('btn-ir-controle').addEventListener('click', ()=> irPara('controle'));
 }
 
 /* ================= PALCO ================= */
@@ -2293,8 +2178,8 @@ function obterHostParaConvidados(){
   const hostAtual = window.location.hostname;
   const ehLocal = hostAtual === 'localhost' || hostAtual === '127.0.0.1' || hostAtual === '';
   if(!ehLocal) return hostAtual; // o proprio Palco ja foi aberto pelo IP real da rede
-  // senao, tenta usar o IP que foi salvo em algum momento pelo Controle
-  return localStorage.getItem('karaokeUltimoIP') || localStorage.getItem('karaokeChooserIP') || null;
+  // senao, usa o IP detectado sozinho (detectarEGuardarIpLocal) ou salvo pelo Controle
+  return localStorage.getItem('karaokeUltimoIP') || null;
 }
 
 function atualizarQrPalco(){
@@ -2340,6 +2225,14 @@ function initControle(){
     const original = btn.textContent;
     btn.textContent = 'Copiado ✓';
     setTimeout(()=>btn.textContent = original, 1500);
+  });
+
+  document.getElementById('controle-sala-codigo').textContent = obterSalaAtual();
+  document.getElementById('btn-controle-nova-sala').addEventListener('click', ()=>{
+    if(!confirm('Isso começa uma fila nova e vazia, com um código de sala diferente. Continuar?')) return;
+    const novaSala = gerarCodigoSala();
+    localStorage.setItem('karaokeSalaAtual', novaSala);
+    window.location.href = getNomeArquivo() + '?view=controle&sala=' + novaSala;
   });
 
   document.getElementById('btn-add').addEventListener('click', addToQueue);
@@ -2767,10 +2660,16 @@ function ligarDragAndDropFila(filaEl){
 
 function initPalco(){
   document.title = 'Karaokê — Palco';
+  detectarEGuardarIpLocal();
   // o video em si so carrega quando onYouTubeIframeAPIReady/onPlayerReady disparar,
   // mas o QR code e a lista da fila nao devem depender disso — comecam a atualizar ja.
   refreshPalco();
   setInterval(refreshPalco, 1500);
+
+  document.getElementById('btn-abrir-controle').addEventListener('click', ()=>{
+    const url = window.location.origin + '/' + getNomeArquivo() + '?view=controle&sala=' + encodeURIComponent(obterSalaAtual());
+    window.open(url, 'KaraokeControle', 'noopener,width=1280,height=800,menubar=no,toolbar=no,location=no,status=no');
+  });
 
   const sidebar = document.getElementById('palco-sidebar');
   const btnToggle = document.getElementById('btn-toggle-sidebar');

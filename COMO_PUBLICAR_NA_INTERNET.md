@@ -53,9 +53,10 @@ https://karaoke-familia.onrender.com
 
 ## Passo 5 — Usar
 
-Abra `https://karaoke-familia.onrender.com/karaoke.html` — a tela inicial
-já aparece **sem pedir IP nem porta** (isso só existe no modo rede local).
-É só clicar em "Abrir Palco" ou "Abrir Controle".
+Abra `https://karaoke-familia.onrender.com/karaoke.html` — já cai direto na
+tela do Palco (arraste essa janela para a TV). Para gerenciar a fila, clique
+no botão discreto "⚙️ Controle" no canto da tela do Palco — ele abre o
+Controle numa aba nova, já na mesma sala.
 
 O QR code dos convidados também funciona automaticamente, e agora funciona
 mesmo que o convidado **não esteja na mesma rede Wi-Fi** — só precisa ter
