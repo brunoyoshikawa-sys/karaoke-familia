@@ -38,8 +38,8 @@ npm start
 npm run build
 ```
 Os arquivos saem em `karaoke-desktop/dist/`:
-- `Karaokê Palco-1.0.0-universal.dmg`
-- `Karaokê Palco Setup 1.0.0.exe`
+- `Karaoke Palco-1.0.2-universal.dmg`
+- `Karaoke Palco Setup 1.0.2.exe`
 
 (dá pra gerar só um dos dois com `npm run build:mac` ou `npm run build:win`)
 
@@ -63,9 +63,9 @@ versão velha ou a nova, o que já causou confusão uma vez.
 3. Suba como um Release novo no GitHub (troque `1.1.0` pela versão real):
    ```bash
    gh release create karaoke-palco-v1.1.0 \
-     "dist/Karaokê Palco-1.1.0-universal.dmg" \
-     "dist/Karaokê Palco Setup 1.1.0.exe" \
-     --title "Karaokê Palco — App de Desktop v1.1.0" \
+     "dist/Karaoke Palco-1.1.0-universal.dmg" \
+     "dist/Karaoke Palco Setup 1.1.0.exe" \
+     --title "Karaoke Palco — App de Desktop v1.1.0" \
      --notes "Descreva o que mudou aqui."
    ```
 4. Atualize os links em `../baixar-app.html` pra apontar pro Release novo
