@@ -6,7 +6,9 @@
   "private": true,
   "scripts": {
     "start": "electron .",
-    "build": "electron-builder --mac"
+    "build": "electron-builder --mac --win",
+    "build:mac": "electron-builder --mac",
+    "build:win": "electron-builder --win"
   },
   "devDependencies": {
     "electron": "^32.0.0",
@@ -17,8 +19,11 @@
     "productName": "Karaokê Palco",
     "icon": "build/icon.png",
     "mac": {
-      "target": "dmg",
+      "target": [{ "target": "dmg", "arch": ["universal"] }],
       "category": "public.app-category.entertainment"
+    },
+    "win": {
+      "target": [{ "target": "nsis", "arch": ["x64"] }]
     },
     "files": [
       "main.js",

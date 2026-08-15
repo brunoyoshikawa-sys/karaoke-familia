@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Karaokê — Baixar app de desktop</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #0B0B12;
+    --bg-raised: #15141F;
+    --neon-pink: #FF2E88;
+    --neon-cyan: #2EE6FF;
+    --text: #F5F3FF;
+    --muted: #8886A3;
+    --line: #29283A;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;min-height:100%;background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;}
+  body{
+    display:flex; flex-direction:column; align-items:center; padding:48px 20px 80px;
+    background:radial-gradient(ellipse at 50% 0%, #1c1a2c 0%, var(--bg) 60%);
+  }
+  h1{
+    font-family:'Bebas Neue',sans-serif; font-size:min(10vw,56px); letter-spacing:2px; margin:0 0 6px;
+    text-align:center;
+  }
+  h1 span{color:var(--neon-pink);}
+  .subtitulo{color:var(--muted); font-size:15px; text-align:center; max-width:520px; line-height:1.5; margin:0 0 40px;}
+  .cartoes{display:flex; gap:20px; flex-wrap:wrap; justify-content:center; max-width:720px; width:100%;}
+  .cartao{
+    flex:1; min-width:260px; background:var(--bg-raised); border:1px solid var(--line); border-radius:16px;
+    padding:28px 24px; text-align:center; display:flex; flex-direction:column; align-items:center; gap:10px;
+  }
+  .cartao .icone{font-size:38px;}
+  .cartao h2{font-size:20px; margin:0; font-family:'Inter'; font-weight:700;}
+  .cartao p{color:var(--muted); font-size:13px; margin:0 0 10px; line-height:1.5;}
+  .btn-baixar{
+    display:inline-block; width:100%; font-family:'Inter'; font-weight:700; font-size:15px;
+    background:var(--neon-pink); color:#fff; text-decoration:none; padding:14px 20px; border-radius:10px;
+    transition:transform .15s ease, opacity .15s ease;
+  }
+  .btn-baixar:hover{transform:translateY(-2px); opacity:.92;}
+  .cartao small{color:var(--muted); font-size:11px;}
+
+  .instrucoes{
+    max-width:640px; width:100%; margin-top:48px; background:var(--bg-raised); border:1px solid var(--line);
+    border-radius:16px; padding:28px 30px;
+  }
+  .instrucoes h3{font-size:13px; text-transform:uppercase; letter-spacing:1.2px; color:var(--neon-cyan); margin:0 0 14px;}
+  .instrucoes ol{margin:0 0 22px; padding-left:20px; color:var(--text); font-size:14px; line-height:1.7;}
+  .instrucoes ol:last-child{margin-bottom:0;}
+  .instrucoes b{color:var(--neon-pink);}
+
+  .rodape{margin-top:40px; color:var(--muted); font-size:13px; text-align:center;}
+  .rodape a{color:var(--neon-cyan);}
+
+  @media (max-width:640px){
+    .cartoes{flex-direction:column;}
+  }
+</style>
+</head>
+<body>
+
+<h1>KARAOKÊ <span>PALCO</span> · APP</h1>
+<p class="subtitulo">
+  Uma segunda forma de abrir o Palco — mesma tela de sempre, só que numa
+  janela própria em vez de uma aba de navegador. A vantagem: quando um
+  vídeo tem a incorporação bloqueada pelo YouTube, esse app volta sozinho
+  pro Karaokê assim que a música termina, sem precisar clicar em nada.
+  <br><br>
+  <strong>Experimental</strong> — o site normal continua funcionando
+  exatamente igual, esse app é só uma alternativa.
+</p>
+
+<div class="cartoes">
+  <div class="cartao">
+    <div class="icone">🍎</div>
+    <h2>Mac</h2>
+    <p>Funciona em qualquer Mac (Apple Silicon ou Intel).</p>
+    <a class="btn-baixar" href="https://github.com/brunoyoshikawa-sys/karaoke-familia/releases/download/karaoke-palco-v1.0.0/Karaoke.Palco-1.0.0-universal.dmg">Baixar para Mac</a>
+    <small>.dmg · v1.0.0</small>
+  </div>
+  <div class="cartao">
+    <div class="icone">🪟</div>
+    <h2>Windows</h2>
+    <p>Para PCs com Windows de 64 bits (a maioria).</p>
+    <a class="btn-baixar" href="https://github.com/brunoyoshikawa-sys/karaoke-familia/releases/download/karaoke-palco-v1.0.0/Karaoke.Palco.Setup.1.0.0.exe">Baixar para Windows</a>
+    <small>.exe · v1.0.0</small>
+  </div>
+</div>
+
+<div class="instrucoes">
+  <h3>Instalar no Mac</h3>
+  <ol>
+    <li>Abra o arquivo <code>.dmg</code> baixado.</li>
+    <li>Arraste o ícone <b>Karaokê Palco</b> para a pasta <b>Applications</b>.</li>
+    <li>Abra pelo Launchpad ou pela pasta Applications.</li>
+    <li><b>Só na primeira vez</b>: o Mac vai avisar que é de um "desenvolvedor não identificado" (o app não tem assinatura paga da Apple). Clique com o botão <b>direito</b> no ícone → <b>Abrir</b> → confirme <b>Abrir mesmo assim</b>.</li>
+  </ol>
+
+  <h3>Instalar no Windows</h3>
+  <ol>
+    <li>Abra o arquivo <code>.exe</code> baixado.</li>
+    <li><b>Só na primeira vez</b>: o Windows Defender pode avisar "O Windows protegeu o computador" (o app não tem certificado pago). Clique em <b>Mais informações</b> → <b>Executar assim mesmo</b>.</li>
+    <li>Siga o instalador — ele cria um atalho e abre o app sozinho no final.</li>
+  </ol>
+</div>
+
+<div class="rodape">
+  Controle e Convidado continuam abrindo no navegador normal, como sempre.<br>
+  <a href="/karaoke.html">← Voltar para o Karaokê</a>
+</div>
+
+</body>
+</html>
