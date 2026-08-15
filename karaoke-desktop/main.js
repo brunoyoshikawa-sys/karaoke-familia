@@ -31,6 +31,43 @@ function obterOuCriarSala() {
 
 const SALA = obterOuCriarSala();
 const URL_PALCO = `${SERVIDOR}/karaoke.html?view=palco&sala=${SALA}`;
+const PREFIXO_URL_CONTROLE = `${SERVIDOR}/karaoke.html?view=controle`;
+
+// CSS injetado na pagina real do youtube.com pra esconder cabecalho, barra
+// lateral, comentarios etc. e fazer o player ocupar a janela inteira — fica
+// parecido com o tamanho do player normal do Palco, em vez do site cheio do
+// YouTube. Reaplicado a cada tick do monitoramento porque o YouTube e um SPA
+// e pode re-renderizar (trocar de video, por exemplo) sem recarregar a pagina.
+const ESTILO_LIMPO_ID = 'karaoke-estilo-limpo';
+const CSS_LIMPO = `
+  html, body { background:#000 !important; overflow:hidden !important; }
+  #masthead-container, #secondary, #comments, #related, #chat,
+  ytd-watch-metadata, tp-yt-app-drawer, ytd-merch-shelf-renderer {
+    display:none !important;
+  }
+  #primary, #primary-inner, #columns, #page-manager, ytd-watch-flexy,
+  #content, #full-bleed-container {
+    width:100% !important; max-width:none !important; margin:0 !important; padding:0 !important;
+  }
+  #player, #player-container-outer, #player-container-inner, #movie_player {
+    position:fixed !important; inset:0 !important;
+    width:100vw !important; height:100vh !important; max-width:none !important;
+    margin:0 !important; z-index:999999 !important;
+  }
+`;
+
+function garantirVisualLimpo(win) {
+  win.webContents.executeJavaScript(`
+    (function(){
+      if (!document.getElementById('${ESTILO_LIMPO_ID}')) {
+        var s = document.createElement('style');
+        s.id = '${ESTILO_LIMPO_ID}';
+        s.textContent = ${JSON.stringify(CSS_LIMPO)};
+        document.head.appendChild(s);
+      }
+    })();
+  `).catch(() => {});
+}
 
 // Monitora a pagina do YouTube (quando um video bloqueado manda a janela pra
 // la — mecanismo que ja existe em karaoke.html, tocarBloqueadoNoYoutube())
@@ -47,11 +84,13 @@ function pararMonitoramento() {
 function iniciarMonitoramento(win) {
   pararMonitoramento();
   console.log('[karaoke] vídeo bloqueado aberto no YouTube — monitorando até terminar...');
+  garantirVisualLimpo(win);
   intervaloMonitor = setInterval(async () => {
     if (win.isDestroyed()) {
       pararMonitoramento();
       return;
     }
+    garantirVisualLimpo(win);
     try {
       const terminou = await win.webContents.executeJavaScript(
         "(function(){ var v = document.querySelector('video'); return !!(v && v.ended); })()"
@@ -80,10 +119,14 @@ function criarJanela() {
 
   win.setMenuBarVisibility(false);
 
-  // Qualquer window.open() da pagina (hoje, so o botao "Abrir Controle") abre
-  // no navegador padrao do sistema, em vez de criar outra janela do Electron.
+  // So o botao "Abrir Controle" deve abrir janela nova (no navegador padrao
+  // do sistema). Qualquer outro window.open() — inclusive os que a propria
+  // pagina do youtube.com dispara sozinha (login, consentimento, anuncios) —
+  // e simplesmente bloqueado, pra nunca abrir uma janela/aba extra.
   win.webContents.setWindowOpenHandler(({ url }) => {
-    shell.openExternal(url);
+    if (url.startsWith(PREFIXO_URL_CONTROLE)) {
+      shell.openExternal(url);
+    }
     return { action: 'deny' };
   });
 
@@ -93,6 +136,24 @@ function criarJanela() {
     } else {
       pararMonitoramento();
     }
+  });
+
+  // Aplica o visual limpo assim que o DOM da pagina existe, sem esperar o
+  // primeiro tick do monitoramento (ate 2s de atraso) — some com o
+  // cabecalho/menu do YouTube o mais rapido possivel.
+  win.webContents.on('dom-ready', () => {
+    if (win.webContents.getURL().startsWith('https://www.youtube.com/watch')) {
+      garantirVisualLimpo(win);
+    }
+  });
+
+  // Se a pagina travar/cair (ex: o youtube.com e bem mais pesado que o
+  // Palco), a janela fica presa numa tela morta sem nenhum aviso. Em vez de
+  // deixar assim, volta sozinho pro Palco.
+  win.webContents.on('render-process-gone', (_event, details) => {
+    console.log('[karaoke] a pagina travou (' + details.reason + ') — voltando pro Palco');
+    pararMonitoramento();
+    if (!win.isDestroyed()) win.loadURL(URL_PALCO);
   });
 
   win.loadURL(URL_PALCO);

@@ -1,7 +1,7 @@
 {
   "name": "karaoke-palco-desktop",
-  "version": "1.0.2",
-  "description": "App nativo do Palco do Karaokê — volta sozinho do YouTube quando um vídeo bloqueado termina",
+  "version": "1.0.4",
+  "description": "App nativo do Palco do Karaok\u00ea \u2014 volta sozinho do YouTube quando um v\u00eddeo bloqueado termina",
   "main": "main.js",
   "private": true,
   "scripts": {
@@ -19,7 +19,14 @@
     "productName": "Karaoke Palco",
     "icon": "build/icon.png",
     "mac": {
-      "target": [{ "target": "dmg", "arch": ["universal"] }],
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "universal"
+          ]
+        }
+      ],
       "category": "public.app-category.entertainment",
       "hardenedRuntime": true,
       "entitlements": "build/entitlements.mac.plist",
@@ -27,7 +34,14 @@
       "gatekeeperAssess": false
     },
     "win": {
-      "target": [{ "target": "nsis", "arch": ["x64"] }]
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
     },
     "files": [
       "main.js",
