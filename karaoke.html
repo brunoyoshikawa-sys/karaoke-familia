@@ -109,13 +109,16 @@
     display:flex; align-items:center; justify-content:center;
   }
   #btn-toggle-sidebar:hover{ color:var(--neon-pink); }
-  #btn-abrir-controle{
+  #btn-abrir-controle, #link-baixar-app{
     position:absolute; bottom:20px; left:24px; z-index:25;
     font-family:'Inter',sans-serif; font-weight:600; font-size:13px; color:var(--muted);
     background:rgba(21,20,31,0.75); border:1px solid var(--line); border-radius:8px;
     padding:8px 14px; cursor:pointer; opacity:0.55; transition:opacity .15s ease, color .15s ease, border-color .15s ease;
   }
-  #btn-abrir-controle:hover{opacity:1; color:var(--text); border-color:var(--neon-pink);}
+  #btn-abrir-controle:hover, #link-baixar-app:hover{opacity:1; color:var(--text); border-color:var(--neon-pink);}
+  #link-baixar-app{
+    left:auto; right:24px; text-decoration:none; display:inline-block;
+  }
   .palco-video-col{ position:relative; }
   .palco-qr-area{display:flex; flex-direction:column; align-items:center; gap:10px; flex-shrink:0;}
   #palco-qr-box{
@@ -300,6 +303,7 @@
   <div class="palco-video-col">
     <button id="btn-toggle-sidebar" title="Esconder/mostrar painel lateral">›</button>
     <button id="btn-abrir-controle" title="Abrir o Controle numa nova aba, para gerenciar a fila">⚙️ Controle</button>
+    <a id="link-baixar-app" href="/baixar-app.html" target="_blank" title="Baixar o Palco como app de desktop (Mac/Windows)">📥 App</a>
     <div id="palco-banner-agora" class="hidden">
       <div class="icone">🎤</div>
       <div class="texto">
@@ -417,8 +421,12 @@
     <button class="btn-ghost" id="btn-controle-nova-sala" type="button">Gerar nova sala</button>
     <small style="width:100%; color:var(--muted);">Começa uma fila nova e vazia — se o Palco já estiver aberto, atualize a página dele também.</small>
   </div>
-  <div class="link-palco">
-    <a href="/baixar-app.html" style="color:var(--muted); font-size:12px;">📥 Experimental: baixar o Palco como app de desktop (Mac/Windows)</a>
+  <div class="panel" style="display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;">
+    <div>
+      <h2 style="margin-bottom:4px;">Novidade experimental</h2>
+      <div style="font-size:14px;">Palco como app de desktop (Mac/Windows) — volta sozinho do YouTube quando um vídeo bloqueado termina.</div>
+    </div>
+    <a class="btn-primary" href="/baixar-app.html" target="_blank" style="text-decoration:none; white-space:nowrap; padding:12px 20px;">📥 Baixar app</a>
   </div>
 </div>
 
