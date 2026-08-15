@@ -52,10 +52,15 @@ em vez disso, edite `config.json` antes de gerar o instalador:
 
 ### Publicar uma versão nova
 
-1. Se mudou alguma coisa, atualize a versão em `package.json` (campo
-   `"version"`) — evita confundir com a versão antiga.
-2. Gere os instaladores (`npm run build`).
-3. Suba como um novo Release no GitHub:
+**Sempre** suba como um Release novo, nunca sobrescreva um arquivo já
+publicado (`gh release upload --clobber`) — sem um número de versão
+diferente no nome do arquivo, não tem como saber se quem baixou pegou a
+versão velha ou a nova, o que já causou confusão uma vez.
+
+1. Atualize a versão em `package.json` (campo `"version"`).
+2. Gere os instaladores (`npm run build`) — o nome dos arquivos em `dist/`
+   já sai com a versão nova.
+3. Suba como um Release novo no GitHub (troque `1.1.0` pela versão real):
    ```bash
    gh release create karaoke-palco-v1.1.0 \
      "dist/Karaokê Palco-1.1.0-universal.dmg" \
@@ -63,5 +68,8 @@ em vez disso, edite `config.json` antes de gerar o instalador:
      --title "Karaokê Palco — App de Desktop v1.1.0" \
      --notes "Descreva o que mudou aqui."
    ```
-4. Atualize os links em `../baixar-app.html` pra apontar pro novo Release
-   (troque `karaoke-palco-v1.0.0` pela tag nova nos dois `href`).
+4. Atualize os links em `../baixar-app.html` pra apontar pro Release novo
+   (troque a tag e o nome dos arquivos nos dois `href`, e o texto da versão
+   embaixo de cada botão).
+5. (Opcional) Apague o Release antigo pra ninguém baixar a versão velha por
+   engano: `gh release delete karaoke-palco-v1.0.0 --yes --cleanup-tag`.
