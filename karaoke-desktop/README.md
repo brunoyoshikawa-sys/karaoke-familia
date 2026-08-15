@@ -10,38 +10,51 @@ Controle e Convidado continuam exatamente iguais — abrem no navegador normal
 do celular/notebook, como sempre. Esse app aqui é só uma alternativa pra
 quem hospeda, pra tela que vai na TV.
 
-## Rodar em modo de teste
+---
 
-Precisa ter o [Node.js](https://nodejs.org) instalado (`node --version` pra
-conferir).
+## Pra quem vai só instalar e usar (família, amigos)
 
+Nenhum comando, nenhum terminal — é só isso:
+
+1. Peça o arquivo `Karaokê Palco-1.0.0-arm64.dmg` pra quem está compartilhando
+   (AirDrop, link do Google Drive, etc.) e dê duplo clique nele.
+2. Vai abrir uma janela — arraste o ícone **Karaokê Palco** pra pasta
+   **Applications** (o atalho que aparece do lado).
+3. Abra o **Launchpad** (ou a pasta Applications) e clique em **Karaokê
+   Palco**.
+4. **Só na primeira vez**: o Mac vai avisar que é de um "desenvolvedor não
+   identificado" — isso é normal (o app não tem uma assinatura paga da
+   Apple). Clique com o **botão direito** no ícone → **Abrir** → confirme
+   **Abrir mesmo assim**. Da próxima vez, abre normal com duplo clique.
+
+Pronto — a janela do Palco abre sozinha, já conectada à mesma fila de
+sempre.
+
+---
+
+## Pra quem vai gerar/atualizar o instalador (você)
+
+Isso aqui já é técnico — só quem for mexer no código ou gerar uma versão
+nova do `.dmg` precisa disso. Requer o [Node.js](https://nodejs.org)
+instalado.
+
+**Testar sem gerar instalador** (roda o app direto):
 ```bash
 cd karaoke-desktop
 npm install
 npm start
 ```
 
-Por padrão ele se conecta no servidor do Render
-(`https://karaoke-familia.onrender.com`). Pra testar contra o servidor local
-(o `python3 server.py` rodando no seu Mac), edite o `config.json`:
-
-```json
-{ "servidor": "http://localhost:8123" }
-```
-
-A sala é gerada e salva automaticamente na primeira vez que abre (fica
-guardada no computador, então reaproveita a mesma sala nas próximas vezes —
-igual o site já faz).
-
-## Gerar o instalador (.dmg)
-
+**Gerar o `.dmg` pra distribuir**:
 ```bash
 npm run build
 ```
+O arquivo sai em `karaoke-desktop/dist/Karaokê Palco-1.0.0-arm64.dmg` —
+esse é o arquivo que você compartilha com a família/amigos (passo acima).
 
-O arquivo `.dmg` aparece na pasta `dist/`.
-
-**Primeira vez abrindo o app instalado**: como ele não tem assinatura paga da
-Apple, o macOS vai avisar que é de um "desenvolvedor não identificado".
-Clique com o botão direito no app → "Abrir" → confirme "Abrir mesmo assim".
-Só precisa fazer isso uma vez — depois abre normal com duplo clique.
+Por padrão o app se conecta no servidor do Render
+(`https://karaoke-familia.onrender.com`). Pra apontar pra um servidor local
+em vez disso, edite `config.json` antes de gerar o instalador:
+```json
+{ "servidor": "http://localhost:8123" }
+```
