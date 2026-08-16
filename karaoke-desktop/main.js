@@ -1,4 +1,4 @@
-const { app, BrowserWindow, shell } = require('electron');
+const { app, BrowserWindow, shell, session } = require('electron');
 const fs = require('fs');
 const path = require('path');
 
@@ -161,7 +161,20 @@ function criarJanela() {
   return win;
 }
 
-app.whenReady().then(() => {
+// uBlock Origin (código aberto, GPL-3.0) embutido pra filtrar os anúncios do
+// YouTube quando um vídeo bloqueado toca la — ver vendor/ublock-origin/LICENSE.txt.
+// Extensao de navegador precisa de arquivos reais em disco (nao funciona de
+// dentro do app.asar), por isso o build desse app roda com "asar": false.
+const PASTA_UBLOCK = path.join(__dirname, 'vendor', 'ublock-origin');
+
+app.whenReady().then(async () => {
+  try {
+    await session.defaultSession.loadExtension(PASTA_UBLOCK, { allowFileAccess: true });
+    console.log('[karaoke] uBlock Origin carregado');
+  } catch (e) {
+    console.log('[karaoke] falha ao carregar uBlock Origin:', e.message);
+  }
+
   criarJanela();
 
   app.on('activate', () => {

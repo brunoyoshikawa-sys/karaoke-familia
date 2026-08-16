@@ -10,6 +10,11 @@ Controle e Convidado continuam exatamente iguais — abrem no navegador normal
 do celular/notebook, como sempre. Esse app aqui é só uma alternativa pra
 quem hospeda, pra tela que vai na TV.
 
+Também vem com o [uBlock Origin](https://github.com/gorhill/uBlock) embutido
+(`vendor/ublock-origin/`, código aberto sob GPL-3.0 — licença em
+`vendor/ublock-origin/LICENSE.txt`), só pra filtrar os anúncios do YouTube
+nos vídeos com incorporação bloqueada.
+
 ---
 
 ## Pra quem vai só instalar e usar (família, amigos)
@@ -38,8 +43,8 @@ npm start
 npm run build
 ```
 Os arquivos saem em `karaoke-desktop/dist/`:
-- `Karaoke Palco-1.0.4-universal.dmg`
-- `Karaoke Palco Setup 1.0.4.exe`
+- `Karaoke Palco-1.0.6-universal.dmg`
+- `Karaoke Palco Setup 1.0.6.exe`
 
 (dá pra gerar só um dos dois com `npm run build:mac` ou `npm run build:win`)
 
