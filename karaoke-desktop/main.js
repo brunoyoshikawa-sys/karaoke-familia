@@ -31,6 +31,7 @@ function obterOuCriarSala() {
 
 const SALA = obterOuCriarSala();
 const URL_PALCO = `${SERVIDOR}/karaoke.html?view=palco&sala=${SALA}`;
+const URL_CONTROLE = `${SERVIDOR}/karaoke.html?view=controle&sala=${SALA}`;
 const PREFIXO_URL_CONTROLE = `${SERVIDOR}/karaoke.html?view=controle`;
 
 // CSS injetado na pagina real do youtube.com pra esconder cabecalho, barra
@@ -56,6 +57,14 @@ const CSS_LIMPO = `
   }
 `;
 
+// Enquanto o video bloqueado toca no youtube.com, o botao "Abrir Controle"
+// que existe na tela do Palco some (nao e mais a nossa pagina) — sem ele, so
+// dava pra abrir o Controle depois que o video terminasse e voltasse pro
+// Palco. Esse botao flutuante resolve isso, injetado na propria pagina do
+// YouTube; o clique dispara um window.open() normal, que ja cai no mesmo
+// setWindowOpenHandler que abre o Controle no navegador do sistema.
+const BOTAO_CONTROLE_ID = 'karaoke-botao-controle';
+
 function garantirVisualLimpo(win) {
   win.webContents.executeJavaScript(`
     (function(){
@@ -64,6 +73,19 @@ function garantirVisualLimpo(win) {
         s.id = '${ESTILO_LIMPO_ID}';
         s.textContent = ${JSON.stringify(CSS_LIMPO)};
         document.head.appendChild(s);
+      }
+      if (!document.getElementById('${BOTAO_CONTROLE_ID}')) {
+        var b = document.createElement('button');
+        b.id = '${BOTAO_CONTROLE_ID}';
+        b.textContent = '⚙️ Controle';
+        b.style.cssText = 'position:fixed; left:16px; top:16px; z-index:1000000; ' +
+          'padding:10px 18px; border:none; border-radius:10px; background:#FF2E88; ' +
+          'color:#fff; font-family:sans-serif; font-size:14px; font-weight:600; ' +
+          'cursor:pointer; opacity:0.88; box-shadow:0 2px 10px rgba(0,0,0,.4);';
+        b.onmouseenter = function(){ b.style.opacity = '1'; };
+        b.onmouseleave = function(){ b.style.opacity = '0.88'; };
+        b.onclick = function(){ window.open(${JSON.stringify(URL_CONTROLE)}, '_blank'); };
+        document.body.appendChild(b);
       }
     })();
   `).catch(() => {});
