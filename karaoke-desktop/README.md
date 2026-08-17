@@ -43,8 +43,8 @@ npm start
 npm run build
 ```
 Os arquivos saem em `karaoke-desktop/dist/`:
-- `Karaoke Palco-1.0.9-universal.dmg`
-- `Karaoke Palco Setup 1.0.9.exe`
+- `Karaoke Palco-1.1.0-universal.dmg`
+- `Karaoke Palco Setup 1.1.0.exe`
 
 (dá pra gerar só um dos dois com `npm run build:mac` ou `npm run build:win`)
 

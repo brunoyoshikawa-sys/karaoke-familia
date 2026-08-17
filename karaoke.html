@@ -1902,6 +1902,17 @@ async function fetchYouTubeTitle(id){
   }
 }
 
+// 'current' avança de antemão assim que um vídeo bloqueado manda a tela pro
+// youtube.com de verdade (necessário pra fila já estar pronta pra quando a
+// tela voltar — inclusive pra quem usa só o navegador, sem o app desktop, e
+// depende do botão "Voltar"), então nesse momento ele não representa o que
+// está tocando, e sim o que vem depois. 'youtubeAtual' é quem realmente está
+// na tela agora nesse caso — por isso Controle/Convidado sempre devem exibir
+// esse aqui (função usada nos dois), nunca 'current' direto.
+function musicaExibidaComoAtual(state){
+  return state.youtubeAtual || state.current;
+}
+
 function avisoBloqueioHtml(item){
   if(item.embeddable === false){
     return ' · <span class="aviso-bloqueio aviso-forte">⚠️ pode estar bloqueado</span>';
@@ -2059,7 +2070,7 @@ function tocarBloqueadoNoYoutube(){
   // panos antes de sair (com sendBeacon, que garante o envio mesmo saindo da
   // pagina em seguida), pra quando o anfitriao apertar "Voltar" no navegador
   // o Palco ja estar pronto direto na proxima musica.
-  navigator.sendBeacon('/api/queue/advance?sala=' + encodeURIComponent(obterSalaAtual()));
+  navigator.sendBeacon('/api/queue/ir-para-youtube?sala=' + encodeURIComponent(obterSalaAtual()));
   window.location.href = 'https://www.youtube.com/watch?v=' + idBloqueado + '&autoplay=1';
 }
 
@@ -2553,9 +2564,10 @@ async function renderControle(){
 
   const tituloEl = document.getElementById('agora-titulo');
   const cantorEl = document.getElementById('agora-cantor');
-  if(state.current){
-    tituloEl.textContent = state.current.titulo;
-    cantorEl.textContent = '🎤 ' + state.current.cantor;
+  const exibida = musicaExibidaComoAtual(state);
+  if(exibida){
+    tituloEl.textContent = (state.youtubeAtual ? '📺 ' : '') + exibida.titulo;
+    cantorEl.textContent = '🎤 ' + exibida.cantor;
   }else{
     tituloEl.innerHTML = '<span class="vazio">Nenhuma música tocando</span>';
     cantorEl.textContent = '';
@@ -3152,9 +3164,10 @@ async function renderConvidado(){
 
   const tituloEl = document.getElementById('agora-titulo-conv');
   const cantorEl = document.getElementById('agora-cantor-conv');
-  if(state.current){
-    tituloEl.textContent = state.current.titulo;
-    cantorEl.textContent = '🎤 ' + state.current.cantor;
+  const exibida = musicaExibidaComoAtual(state);
+  if(exibida){
+    tituloEl.textContent = (state.youtubeAtual ? '📺 ' : '') + exibida.titulo;
+    cantorEl.textContent = '🎤 ' + exibida.cantor;
   }else{
     tituloEl.innerHTML = '<span class="vazio">Nenhuma música tocando</span>';
     cantorEl.textContent = '';

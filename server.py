@@ -236,7 +236,7 @@ def get_room(sala_id):
     sala_id = (sala_id or SALA_PADRAO).strip().upper()[:20] or SALA_PADRAO
     room = rooms.get(sala_id)
     if room is None:
-        room = {"queue": [], "current": None}
+        room = {"queue": [], "current": None, "youtube_atual": None}
         rooms[sala_id] = room
     room['last_access'] = time.time()
     _limpar_salas_antigas()
@@ -328,7 +328,11 @@ class KaraokeHandler(http.server.SimpleHTTPRequestHandler):
         if parsed.path == '/api/state':
             with lock:
                 _, room = get_room(self._sala_da_query(parsed))
-                state = {"queue": room['queue'], "current": room['current']}
+                state = {
+                    "queue": room['queue'],
+                    "current": room['current'],
+                    "youtubeAtual": room.get('youtube_atual'),
+                }
             self._send_json(state)
             return
         if parsed.path == '/api/serverinfo':
@@ -374,10 +378,49 @@ class KaraokeHandler(http.server.SimpleHTTPRequestHandler):
         if parsed.path == '/api/queue/advance':
             with lock:
                 _, room = get_room(sala_param)
+                # um avanco "normal" (Pular no Controle, ou fim natural de um video
+                # tocando no player embutido) sempre significa que o que estava no
+                # youtube.com — se houver — deixou de valer.
+                room['youtube_atual'] = None
                 if room['queue']:
                     room['current'] = room['queue'].pop(0)
                 else:
                     room['current'] = None
+                state = {"queue": room['queue'], "current": room['current']}
+            self._send_json(state)
+            return
+
+        if parsed.path == '/api/queue/ir-para-youtube':
+            # chamado (via sendBeacon) quando um video com incorporacao bloqueada
+            # manda a tela pro youtube.com de verdade. 'current' sozinho nao da
+            # pra confiar como "o que esta tocando" nesse momento, porque ele
+            # precisa avancar por baixo dos panos pra fila ja estar pronta quando
+            # a tela voltar (inclusive pra quem usa so o navegador, sem o app
+            # desktop, e depende do botao "Voltar") — por isso guardamos separado
+            # o que realmente esta na tela agora, so pra exibicao (Controle/Convidado).
+            with lock:
+                _, room = get_room(sala_param)
+                room['youtube_atual'] = room['current']
+                if room['queue']:
+                    room['current'] = room['queue'].pop(0)
+                else:
+                    room['current'] = None
+                state = {
+                    "queue": room['queue'],
+                    "current": room['current'],
+                    "youtubeAtual": room['youtube_atual'],
+                }
+            self._send_json(state)
+            return
+
+        if parsed.path == '/api/queue/limpar-youtube-atual':
+            # o app desktop chama isso quando detecta que o video no youtube.com
+            # terminou e esta prestes a voltar pro Palco — sem isso, o Controle
+            # continuaria mostrando aquele video como "tocando" ate o proximo
+            # "Pular" ou vídeo bloqueado, mesmo já tendo acabado.
+            with lock:
+                _, room = get_room(sala_param)
+                room['youtube_atual'] = None
                 state = {"queue": room['queue'], "current": room['current']}
             self._send_json(state)
             return

@@ -34,6 +34,7 @@ const URL_PALCO = `${SERVIDOR}/karaoke.html?view=palco&sala=${SALA}`;
 const URL_CONTROLE = `${SERVIDOR}/karaoke.html?view=controle&sala=${SALA}`;
 const PREFIXO_URL_CONTROLE = `${SERVIDOR}/karaoke.html?view=controle`;
 const URL_ESTADO = `${SERVIDOR}/api/state?sala=${SALA}`;
+const URL_LIMPAR_YOUTUBE = `${SERVIDOR}/api/queue/limpar-youtube-atual?sala=${SALA}`;
 
 // Pra saber se alguem apertou "Pular" no Controle enquanto o video bloqueado
 // toca no youtube.com de verdade — nesse caso nao tem nenhum JS nosso rodando
@@ -136,6 +137,11 @@ function voltarProPalco(win, motivo) {
   voltandoParaPalco = true;
   pararMonitoramento();
   console.log('[karaoke] ' + motivo + ' — voltando pro Palco');
+  // limpa o "youtube_atual" no servidor — sem isso, o Controle continuaria
+  // mostrando esse video como tocando mesmo depois de ja termos saido dele.
+  // Chamar de novo apos um "pular" (que ja limpa isso sozinho no servidor)
+  // e inofensivo, so um POST a mais.
+  fetch(URL_LIMPAR_YOUTUBE, { method: 'POST' }).catch(() => {});
   win.loadURL(URL_PALCO);
 }
 
