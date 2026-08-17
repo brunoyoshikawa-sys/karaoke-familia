@@ -2040,9 +2040,19 @@ function onPlayerError(e){
   }
 }
 
+// Enquanto isso for true, refreshPalco() nao mexe em mais nada — sem essa
+// trava, o polling de 1.5s (setInterval mais abaixo) podia disparar de novo
+// ENQUANTO a troca de pagina pro youtube.com ainda estava em andamento (ela
+// nao e instantanea), ver o estado ja avançado pelo sendBeacon abaixo e
+// tentar carregar a PROXIMA musica no player embutido — se ela tambem fosse
+// bloqueada, o ciclo se repetia sozinho, avançando a fila varias vezes sem
+// nenhum clique.
+let saindoParaYoutube = false;
+
 function tocarBloqueadoNoYoutube(){
   const idBloqueado = ultimoIdCarregado;
   if(!idBloqueado) return;
+  saindoParaYoutube = true;
   // Em vez de abrir uma aba/janela separada (que obrigava a "projetar" essa
   // outra janela e depois fechar pra voltar), manda a PROPRIA aba do Palco
   // pro YouTube — mesma tela, sem popup nenhum. Avança a fila por baixo dos
@@ -2129,7 +2139,9 @@ function aplicarEstadoPalco(state){
 }
 
 async function refreshPalco(){
+  if(saindoParaYoutube) return; // ja decidimos ir pro youtube.com — so esperar a pagina trocar
   const state = await fetchState();
+  if(saindoParaYoutube) return; // pode ter mudado durante o fetchState acima
   if(!state.current && state.queue.length > 0){
     await avancarNoPalco();
     return;
