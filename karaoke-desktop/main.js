@@ -33,6 +33,20 @@ const SALA = obterOuCriarSala();
 const URL_PALCO = `${SERVIDOR}/karaoke.html?view=palco&sala=${SALA}`;
 const URL_CONTROLE = `${SERVIDOR}/karaoke.html?view=controle&sala=${SALA}`;
 const PREFIXO_URL_CONTROLE = `${SERVIDOR}/karaoke.html?view=controle`;
+const URL_ESTADO = `${SERVIDOR}/api/state?sala=${SALA}`;
+
+// Pra saber se alguem apertou "Pular" no Controle enquanto o video bloqueado
+// toca no youtube.com de verdade — nesse caso nao tem nenhum JS nosso rodando
+// na pagina pra perceber isso sozinho (nao e mais a nossa pagina).
+async function obterIdAtualNoServidor() {
+  try {
+    const r = await fetch(URL_ESTADO, { cache: 'no-store' });
+    const data = await r.json();
+    return data.current ? data.current.id : null;
+  } catch (e) {
+    return undefined; // sem servidor/rede — nao da pra saber, nao trata como mudanca
+  }
+}
 
 // CSS injetado na pagina real do youtube.com pra esconder cabecalho, barra
 // lateral, comentarios etc. e fazer o player ocupar a janela inteira — fica
@@ -103,16 +117,34 @@ function pararMonitoramento() {
   }
 }
 
-function iniciarMonitoramento(win) {
+async function iniciarMonitoramento(win) {
   pararMonitoramento();
   console.log('[karaoke] vídeo bloqueado aberto no YouTube — monitorando até terminar...');
   garantirVisualLimpo(win);
+
+  // id "current" no servidor nesse momento — a fila ja avancou (tocarBloqueadoNoYoutube
+  // manda o /api/queue/advance antes de navegar), entao isso e o que deve tocar DEPOIS
+  // que essa pagina do youtube.com fechar. Se mudar de novo enquanto ainda estamos
+  // aqui, e porque alguem apertou "Pular" no Controle — nesse caso volta na hora.
+  const idQuandoComecou = await obterIdAtualNoServidor();
+
   intervaloMonitor = setInterval(async () => {
     if (win.isDestroyed()) {
       pararMonitoramento();
       return;
     }
     garantirVisualLimpo(win);
+
+    if (idQuandoComecou !== undefined) {
+      const idAgora = await obterIdAtualNoServidor();
+      if (idAgora !== undefined && idAgora !== idQuandoComecou) {
+        pararMonitoramento();
+        console.log('[karaoke] fila avançou (pular) — voltando pro Palco');
+        win.loadURL(URL_PALCO);
+        return;
+      }
+    }
+
     try {
       const terminou = await win.webContents.executeJavaScript(
         "(function(){ var v = document.querySelector('video'); return !!(v && v.ended); })()"

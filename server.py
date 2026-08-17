@@ -106,13 +106,6 @@ def buscar_youtube(query, max_results=20, page_token=None):
                 r['licenciado'] = info['licenciado']
                 r['visualizacoes'] = info['visualizacoes']
 
-    def nivel_risco(r):
-        if not r['embeddable']:
-            return 2  # bloqueio confirmado pela API — fica por ultimo
-        if r['licenciado']:
-            return 1  # embeddable=true mas usa audio com Content ID — pode falhar na pratica
-        return 0      # sem sinal de risco conhecido — mais confiavel
-
     def nao_menciona_karaoke(r):
         titulo = (r['titulo'] or '').lower()
         return 'karaokê' not in titulo and 'karaoke' not in titulo
@@ -132,7 +125,11 @@ def buscar_youtube(query, max_results=20, page_token=None):
         encontrados = sum(1 for t in termos_busca if t in titulo_norm)
         return encontrados / len(termos_busca)
 
-    resultados.sort(key=lambda r: (nivel_risco(r), -relevancia(r), nao_menciona_karaoke(r), -r['visualizacoes']))
+    # o risco de bloqueio (embeddable/licenciado) nao entra mais na ordenacao — so
+    # mostra o aviso pro convidado (avisoBloqueioHtml no karaoke.html) — ja que agora
+    # o app desktop toca esses videos normalmente (mesma janela + volta sozinho),
+    # nao faz mais sentido empurrar musicas relevantes pro fim da lista por causa disso.
+    resultados.sort(key=lambda r: (-relevancia(r), nao_menciona_karaoke(r), -r['visualizacoes']))
     return {'resultados': resultados, 'proximaPagina': proxima_pagina}
 
 
