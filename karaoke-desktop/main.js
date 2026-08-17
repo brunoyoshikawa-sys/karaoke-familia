@@ -108,17 +108,40 @@ function garantirVisualLimpo(win) {
 // Monitora a pagina do YouTube (quando um video bloqueado manda a janela pra
 // la — mecanismo que ja existe em karaoke.html, tocarBloqueadoNoYoutube())
 // pra voltar sozinho assim que o video terminar, sem precisar de clique.
+//
+// O youtube.com as vezes dispara 'did-navigate' mais de uma vez pro MESMO
+// video (ex: um redirecionamento intermediario que tambem bate com o prefixo
+// '/watch'), o que chamaria iniciarMonitoramento() duas vezes em paralelo.
+// Como a primeira parte dessa funcao e assincrona (espera o /api/state
+// responder antes de criar o setInterval), sem cuidado isso deixava DOIS
+// monitoramentos rodando ao mesmo tempo, cada um capaz de mandar a janela
+// de volta pro Palco por conta propria — daí a instabilidade (fila avançando
+// mais de uma música, tela do Controle dessincronizando). O "numero de
+// geracao" invalida qualquer chamada antiga que ainda esteja no meio do
+// caminho assim que uma nova comeca.
 let intervaloMonitor = null;
+let geracaoMonitor = 0;
+let voltandoParaPalco = false;
 
 function pararMonitoramento() {
+  geracaoMonitor++; // invalida qualquer iniciarMonitoramento() ainda esperando o /api/state
   if (intervaloMonitor) {
     clearInterval(intervaloMonitor);
     intervaloMonitor = null;
   }
 }
 
+function voltarProPalco(win, motivo) {
+  if (voltandoParaPalco || win.isDestroyed()) return;
+  voltandoParaPalco = true;
+  pararMonitoramento();
+  console.log('[karaoke] ' + motivo + ' — voltando pro Palco');
+  win.loadURL(URL_PALCO);
+}
+
 async function iniciarMonitoramento(win) {
   pararMonitoramento();
+  const minhaGeracao = geracaoMonitor;
   console.log('[karaoke] vídeo bloqueado aberto no YouTube — monitorando até terminar...');
   garantirVisualLimpo(win);
 
@@ -128,19 +151,27 @@ async function iniciarMonitoramento(win) {
   // aqui, e porque alguem apertou "Pular" no Controle — nesse caso volta na hora.
   const idQuandoComecou = await obterIdAtualNoServidor();
 
-  intervaloMonitor = setInterval(async () => {
-    if (win.isDestroyed()) {
-      pararMonitoramento();
+  // enquanto esperavamos a resposta acima, outra chamada a iniciarMonitoramento
+  // pode ter acontecido (did-navigate duplicado) — essa aqui ficou desatualizada,
+  // deixa a mais recente no comando e nao cria um segundo setInterval.
+  if (minhaGeracao !== geracaoMonitor) return;
+
+  // capturado numa variavel local (nao a "intervaloMonitor" compartilhada) pra
+  // esse callback so cancelar A SI MESMO — se usasse a variavel compartilhada,
+  // um callback antigo/invalidado poderia acabar cancelando por engano um
+  // monitoramento mais novo, que ja sobrescreveu essa variavel nesse meio tempo.
+  const meuIntervalo = setInterval(async () => {
+    if (minhaGeracao !== geracaoMonitor || win.isDestroyed()) {
+      clearInterval(meuIntervalo);
       return;
     }
     garantirVisualLimpo(win);
 
     if (idQuandoComecou !== undefined) {
       const idAgora = await obterIdAtualNoServidor();
+      if (minhaGeracao !== geracaoMonitor) return; // invalidado enquanto esperava essa resposta
       if (idAgora !== undefined && idAgora !== idQuandoComecou) {
-        pararMonitoramento();
-        console.log('[karaoke] fila avançou (pular) — voltando pro Palco');
-        win.loadURL(URL_PALCO);
+        voltarProPalco(win, 'fila avançou (pular)');
         return;
       }
     }
@@ -149,15 +180,15 @@ async function iniciarMonitoramento(win) {
       const terminou = await win.webContents.executeJavaScript(
         "(function(){ var v = document.querySelector('video'); return !!(v && v.ended); })()"
       );
+      if (minhaGeracao !== geracaoMonitor) return;
       if (terminou) {
-        pararMonitoramento();
-        console.log('[karaoke] vídeo terminou — voltando pro Palco');
-        win.loadURL(URL_PALCO);
+        voltarProPalco(win, 'vídeo terminou');
       }
     } catch (e) {
       // pagina ainda carregando ou trocou de contexto — tenta de novo no proximo tick
     }
   }, 2000);
+  intervaloMonitor = meuIntervalo;
 }
 
 function criarJanela() {
@@ -189,6 +220,7 @@ function criarJanela() {
       iniciarMonitoramento(win);
     } else {
       pararMonitoramento();
+      voltandoParaPalco = false; // chegou num lugar que nao e o youtube.com/watch — destrava
     }
   });
 
@@ -205,9 +237,7 @@ function criarJanela() {
   // Palco), a janela fica presa numa tela morta sem nenhum aviso. Em vez de
   // deixar assim, volta sozinho pro Palco.
   win.webContents.on('render-process-gone', (_event, details) => {
-    console.log('[karaoke] a pagina travou (' + details.reason + ') — voltando pro Palco');
-    pararMonitoramento();
-    if (!win.isDestroyed()) win.loadURL(URL_PALCO);
+    voltarProPalco(win, 'a página travou (' + details.reason + ')');
   });
 
   win.loadURL(URL_PALCO);
