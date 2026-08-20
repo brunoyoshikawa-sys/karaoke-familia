@@ -1,6 +1,6 @@
 {
   "name": "karaoke-palco-desktop",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "App nativo do Palco do Karaok\u00ea \u2014 volta sozinho do YouTube quando um v\u00eddeo bloqueado termina",
   "main": "main.js",
   "private": true,
