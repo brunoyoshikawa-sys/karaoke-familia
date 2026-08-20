@@ -280,6 +280,11 @@
     .ip-row input, .ip-row button{width:100%;}
     .link-palco{flex-direction:column; align-items:flex-start;}
     .link-palco code{word-break:break-all;}
+    /* alvos de toque maiores pros botões ↑ ↓ ✕ de cada música da fila — no
+       tamanho padrão (24-28px) ficam fáceis de errar/remover sem querer
+       no celular, que é como o anfitrião mais usa o Controle numa festa. */
+    .fila-item .acoes{gap:2px;}
+    .fila-item .acoes .btn-ghost{padding:12px 14px; font-size:16px;}
   }
 </style>
 </head>
@@ -2198,9 +2203,13 @@ function atualizarPainelInfoPalco(state){
   }
   let html = '';
   proximas.slice(0, MAX_VISIVEIS).forEach((item, i)=>{
+    // a 1a posição é a própria 'current' pré-avançada (ver proximasMusicas) —
+    // ainda não começou a tocar de verdade, só marca isso com ⏳ em vez do
+    // número, pra não parecer só mais uma música normal da fila.
+    const pendente = i === 0 && !!(state.youtubeAtual && state.current);
     html += `
       <div class="palco-fila-item">
-        <div class="num">${i+1}</div>
+        <div class="num">${pendente ? '⏳' : i+1}</div>
         <div class="txt">
           <div class="titulo">${item.titulo}</div>
           <div class="cantor">🎤 ${item.cantor}</div>
@@ -3235,12 +3244,18 @@ async function renderConvidado(){
     const div = document.createElement('div');
     const ehMinha = meuNome && item.cantor === meuNome;
     const ehProximo = i === 0;
+    // se essa 1a posição for a 'current' pré-avançada (ver proximasMusicas),
+    // ela ainda não começou a tocar de verdade — o vídeo anterior segue no
+    // youtube.com — daí o aviso extra, pra não parecer que já é a vez dela.
+    const pendente = ehProximo && !!(state.youtubeAtual && state.current);
     div.className = 'fila-item' + (ehMinha ? ' minha-musica' : '') + (ehProximo ? ' proximo' : '');
     div.dataset.songId = item.id;
     div.innerHTML = `
-      <div class="pos">${i+1}</div>
+      <div class="pos">${pendente ? '⏳' : i+1}</div>
       <div class="info">
-        ${ehProximo ? `<div class="badge-proximo">🎤 ${item.cantor} — você é o próximo!</div>` : ''}
+        ${ehProximo ? (ehMinha
+          ? `<div class="badge-proximo">🎤 ${item.cantor} — você é o próximo!${pendente ? ' (assim que o vídeo atual terminar)' : ''}</div>`
+          : `<div class="badge-proximo">🎤 ${item.cantor} é o próximo!${pendente ? ' (assim que o vídeo atual terminar)' : ''}</div>`) : ''}
         <div class="titulo">${item.titulo}</div>
         <div class="cantor">🎤 ${item.cantor}</div>
       </div>
