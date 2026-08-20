@@ -378,15 +378,25 @@ class KaraokeHandler(http.server.SimpleHTTPRequestHandler):
         if parsed.path == '/api/queue/advance':
             with lock:
                 _, room = get_room(sala_param)
-                # um avanco "normal" (Pular no Controle, ou fim natural de um video
-                # tocando no player embutido) sempre significa que o que estava no
-                # youtube.com — se houver — deixou de valer.
-                room['youtube_atual'] = None
-                if room['queue']:
-                    room['current'] = room['queue'].pop(0)
+                if room.get('youtube_atual'):
+                    # 'current' ja foi pre-avancado pra proxima musica quando o video
+                    # anterior mandou a tela pro youtube.com (ir-para-youtube) — ele ja
+                    # e o proximo certo. Um "Pular" nesse momento so confirma que saimos
+                    # do video que estava la (limpa o marcador); NAO pode tirar mais
+                    # ninguem da fila, senao uma musica e perdida sem nunca tocar (bug
+                    # relatado: pular a 1a enquanto ela tocava no youtube.com fazia a
+                    # 2a sumir e ir direto pra 3a).
+                    room['youtube_atual'] = None
                 else:
-                    room['current'] = None
-                state = {"queue": room['queue'], "current": room['current']}
+                    if room['queue']:
+                        room['current'] = room['queue'].pop(0)
+                    else:
+                        room['current'] = None
+                state = {
+                    "queue": room['queue'],
+                    "current": room['current'],
+                    "youtubeAtual": room.get('youtube_atual'),
+                }
             self._send_json(state)
             return
 

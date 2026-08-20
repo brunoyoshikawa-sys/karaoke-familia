@@ -39,11 +39,18 @@ const URL_LIMPAR_YOUTUBE = `${SERVIDOR}/api/queue/limpar-youtube-atual?sala=${SA
 // Pra saber se alguem apertou "Pular" no Controle enquanto o video bloqueado
 // toca no youtube.com de verdade — nesse caso nao tem nenhum JS nosso rodando
 // na pagina pra perceber isso sozinho (nao e mais a nossa pagina).
-async function obterIdAtualNoServidor() {
+//
+// Usa 'youtubeAtual' (nao 'current'): 'current' ja e pre-avancado pra proxima
+// musica assim que a tela vem pro youtube.com, entao ele NAO muda quando o
+// Controle aperta "Pular" nesse meio tempo (server.py so limpa youtube_atual
+// nesse caso, sem tirar mais ninguem da fila — ver /api/queue/advance). Ou
+// seja, 'youtubeAtual' e quem realmente reflete "saimos do video que estava
+// aqui", que e o sinal certo pra saber quando voltar pro Palco.
+async function obterYoutubeAtualNoServidor() {
   try {
     const r = await fetch(URL_ESTADO, { cache: 'no-store' });
     const data = await r.json();
-    return data.current ? data.current.id : null;
+    return data.youtubeAtual ? data.youtubeAtual.id : null;
   } catch (e) {
     return undefined; // sem servidor/rede — nao da pra saber, nao trata como mudanca
   }
@@ -151,11 +158,11 @@ async function iniciarMonitoramento(win) {
   console.log('[karaoke] vídeo bloqueado aberto no YouTube — monitorando até terminar...');
   garantirVisualLimpo(win);
 
-  // id "current" no servidor nesse momento — a fila ja avancou (tocarBloqueadoNoYoutube
-  // manda o /api/queue/advance antes de navegar), entao isso e o que deve tocar DEPOIS
-  // que essa pagina do youtube.com fechar. Se mudar de novo enquanto ainda estamos
+  // id de 'youtubeAtual' no servidor nesse momento — deve ser o proprio video que
+  // acabou de abrir aqui (tocarBloqueadoNoYoutube manda o /api/queue/ir-para-youtube
+  // antes de navegar, que grava isso). Se sumir (virar null) enquanto ainda estamos
   // aqui, e porque alguem apertou "Pular" no Controle — nesse caso volta na hora.
-  const idQuandoComecou = await obterIdAtualNoServidor();
+  const idQuandoComecou = await obterYoutubeAtualNoServidor();
 
   // enquanto esperavamos a resposta acima, outra chamada a iniciarMonitoramento
   // pode ter acontecido (did-navigate duplicado) — essa aqui ficou desatualizada,
@@ -174,7 +181,7 @@ async function iniciarMonitoramento(win) {
     garantirVisualLimpo(win);
 
     if (idQuandoComecou !== undefined) {
-      const idAgora = await obterIdAtualNoServidor();
+      const idAgora = await obterYoutubeAtualNoServidor();
       if (minhaGeracao !== geracaoMonitor) return; // invalidado enquanto esperava essa resposta
       if (idAgora !== undefined && idAgora !== idQuandoComecou) {
         voltarProPalco(win, 'fila avançou (pular)');

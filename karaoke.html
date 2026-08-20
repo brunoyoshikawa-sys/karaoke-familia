@@ -1854,6 +1854,16 @@ async function apiAdvance(){
   return await r.json();
 }
 
+// Chamado (sem esperar resposta) sempre que o Palco volta a tocar algo embutido de
+// verdade — cobre quem usa só o navegador (sem o app desktop) e depende do botão
+// "Voltar": sem isso, 'youtube_atual' ficaria preso no vídeo bloqueado anterior
+// mesmo depois do Palco já estar tocando o próximo embutido normalmente, e o
+// próximo "Pular"/fim de vídeo trataria esse resquício como se ainda estivéssemos
+// no youtube.com (ver /api/queue/advance no server.py).
+function apiLimparYoutubeAtual(){
+  fetch('/api/queue/limpar-youtube-atual?sala=' + encodeURIComponent(obterSalaAtual()), {method:'POST'}).catch(()=>{});
+}
+
 async function apiRemove(index){
   const r = await fetch('/api/queue/remove?sala=' + encodeURIComponent(obterSalaAtual()), {
     method:'POST',
@@ -2141,7 +2151,10 @@ function aplicarEstadoPalco(state){
   if(state.current){
     if(state.current.id !== ultimoIdCarregado){
       const carregou = showPlaying(state.current.id);
-      if(carregou) mostrarAgoraCantando(state.current.cantor);
+      if(carregou){
+        mostrarAgoraCantando(state.current.cantor);
+        apiLimparYoutubeAtual();
+      }
     }
   }else{
     showIdle();
