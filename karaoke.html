@@ -353,6 +353,7 @@
 
   <div class="panel" style="flex:1; display:flex; flex-direction:column; min-height:0;">
     <h2>Próximas da fila</h2>
+    <div id="fila-pendente"></div>
     <div id="fila"></div>
   </div>
 
@@ -1923,6 +1924,19 @@ function musicaExibidaComoAtual(state){
   return state.youtubeAtual || state.current;
 }
 
+// Mesma ideia de musicaExibidaComoAtual, mas pra listas "a seguir": enquanto
+// 'youtubeAtual' estiver setado, 'current' já é a próxima música (foi
+// pré-avançada por baixo dos panos) mas ainda não começou a tocar de
+// verdade — sem incluir ela aqui, ela some da lista só porque tecnicamente
+// não está mais no array 'queue', mesmo continuando prestes a tocar assim
+// que o vídeo atual (no youtube.com) terminar.
+function proximasMusicas(state){
+  if(state.youtubeAtual && state.current){
+    return [state.current, ...state.queue];
+  }
+  return state.queue;
+}
+
 function avisoBloqueioHtml(item){
   if(item.embeddable === false){
     return ' · <span class="aviso-bloqueio aviso-forte">⚠️ pode estar bloqueado</span>';
@@ -2177,12 +2191,13 @@ async function refreshPalco(){
 function atualizarPainelInfoPalco(state){
   const listaEl = document.getElementById('palco-fila-lista');
   const MAX_VISIVEIS = 4;
-  if(!state.queue || state.queue.length === 0){
+  const proximas = proximasMusicas(state);
+  if(proximas.length === 0){
     listaEl.innerHTML = '<div class="palco-fila-vazia">Fila vazia — escaneie o QR e adicione a sua!</div>';
     return;
   }
   let html = '';
-  state.queue.slice(0, MAX_VISIVEIS).forEach((item, i)=>{
+  proximas.slice(0, MAX_VISIVEIS).forEach((item, i)=>{
     html += `
       <div class="palco-fila-item">
         <div class="num">${i+1}</div>
@@ -2193,8 +2208,8 @@ function atualizarPainelInfoPalco(state){
       </div>
     `;
   });
-  if(state.queue.length > MAX_VISIVEIS){
-    html += `<div class="palco-fila-mais">+ ${state.queue.length - MAX_VISIVEIS} música(s) na fila</div>`;
+  if(proximas.length > MAX_VISIVEIS){
+    html += `<div class="palco-fila-mais">+ ${proximas.length - MAX_VISIVEIS} música(s) na fila</div>`;
   }
   listaEl.innerHTML = html;
 }
@@ -2586,10 +2601,32 @@ async function renderControle(){
     cantorEl.textContent = '';
   }
 
+  // Enquanto o vídeo anterior ainda toca de verdade no youtube.com, 'current'
+  // já é a próxima música (pré-avançada por baixo dos panos) mas ainda não
+  // começou a tocar — mostrada aqui separada da lista editável porque, pro
+  // servidor, ela já não está mais dentro do array 'queue' (então não dá pra
+  // arrastar/mover/remover ela como as outras, os índices não bateriam).
+  const pendenteEl = document.getElementById('fila-pendente');
+  if(state.youtubeAtual && state.current){
+    pendenteEl.innerHTML = `
+      <div class="fila-item proximo">
+        <div class="pos">▶</div>
+        <div class="info">
+          <div class="titulo">${state.current.titulo}</div>
+          <div class="cantor">🎤 ${state.current.cantor} · a seguir, assim que o vídeo atual (📺) terminar</div>
+        </div>
+      </div>
+    `;
+  }else{
+    pendenteEl.innerHTML = '';
+  }
+
   const filaEl = document.getElementById('fila');
   filaEl.innerHTML = '';
   if(state.queue.length === 0){
-    filaEl.innerHTML = '<div class="fila-vazia-msg">A fila está vazia. Adicione uma música acima ☝️</div>';
+    if(!(state.youtubeAtual && state.current)){
+      filaEl.innerHTML = '<div class="fila-vazia-msg">A fila está vazia. Adicione uma música acima ☝️</div>';
+    }
     return;
   }
   state.queue.forEach((item, i)=>{
@@ -3188,12 +3225,13 @@ async function renderConvidado(){
 
   const filaEl = document.getElementById('fila-conv');
   filaEl.innerHTML = '';
-  if(state.queue.length === 0){
+  const proximas = proximasMusicas(state);
+  if(proximas.length === 0){
     filaEl.innerHTML = '<div class="fila-vazia-msg">A fila está vazia. Adicione uma música acima ☝️</div>';
     return;
   }
   const meuNome = document.getElementById('conv-seu-nome-unico').value.trim();
-  state.queue.forEach((item, i)=>{
+  proximas.forEach((item, i)=>{
     const div = document.createElement('div');
     const ehMinha = meuNome && item.cantor === meuNome;
     const ehProximo = i === 0;
