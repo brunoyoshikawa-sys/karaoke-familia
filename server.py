@@ -376,22 +376,25 @@ class KaraokeHandler(http.server.SimpleHTTPRequestHandler):
             return
 
         if parsed.path == '/api/queue/advance':
+            # Endpoint usado só pelo Palco (fim natural de um vídeo tocando embutido,
+            # o botão de "pular" de um vídeo indisponível, e o preenchimento inicial da
+            # fila) — quem chama aqui está confirmando que o que tocava DE VERDADE no
+            # player embutido acabou, então 'current' TEM que avançar de verdade, sem
+            # excecão. Um 'youtube_atual' setado nesse momento (se sobrou de algum
+            # vídeo bloqueado anterior) deixa de valer — nunca deve impedir esse avanço
+            # (chegou a impedir num bug: a última música da fila, ao terminar, ficava
+            # "presa" como current sem avançar pra vazio, e a tela ficava esperando
+            # nesse estado ate o proprio YouTube repetir o video sozinho). A lógica de
+            # "não avançar mais, só confirmar que saiu do youtube.com" pertence só ao
+            # Controle (que sabe, na hora do clique, se está mostrando 'youtubeAtual')
+            # — ver /api/queue/limpar-youtube-atual, chamado direto por ele nesse caso.
             with lock:
                 _, room = get_room(sala_param)
-                if room.get('youtube_atual'):
-                    # 'current' ja foi pre-avancado pra proxima musica quando o video
-                    # anterior mandou a tela pro youtube.com (ir-para-youtube) — ele ja
-                    # e o proximo certo. Um "Pular" nesse momento so confirma que saimos
-                    # do video que estava la (limpa o marcador); NAO pode tirar mais
-                    # ninguem da fila, senao uma musica e perdida sem nunca tocar (bug
-                    # relatado: pular a 1a enquanto ela tocava no youtube.com fazia a
-                    # 2a sumir e ir direto pra 3a).
-                    room['youtube_atual'] = None
+                room['youtube_atual'] = None
+                if room['queue']:
+                    room['current'] = room['queue'].pop(0)
                 else:
-                    if room['queue']:
-                        room['current'] = room['queue'].pop(0)
-                    else:
-                        room['current'] = None
+                    room['current'] = None
                 state = {
                     "queue": room['queue'],
                     "current": room['current'],

@@ -1860,14 +1860,25 @@ async function apiAdvance(){
   return await r.json();
 }
 
-// Chamado (sem esperar resposta) sempre que o Palco volta a tocar algo embutido de
-// verdade — cobre quem usa só o navegador (sem o app desktop) e depende do botão
-// "Voltar": sem isso, 'youtube_atual' ficaria preso no vídeo bloqueado anterior
-// mesmo depois do Palco já estar tocando o próximo embutido normalmente, e o
-// próximo "Pular"/fim de vídeo trataria esse resquício como se ainda estivéssemos
-// no youtube.com (ver /api/queue/advance no server.py).
-function apiLimparYoutubeAtual(){
-  fetch('/api/queue/limpar-youtube-atual?sala=' + encodeURIComponent(obterSalaAtual()), {method:'POST'}).catch(()=>{});
+// Limpa 'youtube_atual' no servidor, sem popar nada da fila. Dois usos:
+// 1) Palco chama isso (sem esperar resposta) sempre que volta a tocar algo
+//    embutido de verdade — cobre quem usa só o navegador (sem o app
+//    desktop) e depende do botão "Voltar": sem isso, o Controle/Convidado
+//    continuariam mostrando o vídeo bloqueado anterior como "tocando"
+//    (com 📺) por mais tempo do que deveriam.
+// 2) Controle chama isso (esperando a resposta) quando "Pular" é clicado
+//    enquanto mostra 'youtubeAtual' — nesse momento 'current' já é a
+//    próxima música de verdade (pré-avançada assim que o vídeo anterior foi
+//    pro youtube.com), então só precisa confirmar que saímos de lá, SEM
+//    chamar /api/queue/advance (que popa a fila de verdade — chamar ele
+//    aqui também perderia uma música sem ela nunca tocar).
+async function apiLimparYoutubeAtual(){
+  try{
+    const r = await fetch('/api/queue/limpar-youtube-atual?sala=' + encodeURIComponent(obterSalaAtual()), {method:'POST'});
+    return await r.json();
+  }catch(e){
+    return null;
+  }
 }
 
 async function apiRemove(index){
@@ -2309,7 +2320,18 @@ function initControle(){
   document.getElementById('btn-pular').addEventListener('click', async ()=>{
     const btn = document.getElementById('btn-pular');
     btn.disabled = true;
-    await apiAdvance();
+    const state = await fetchState();
+    if(state.youtubeAtual){
+      // O que aparece como "tocando agora" é o vídeo que foi de verdade pro
+      // youtube.com — 'current' já é a próxima música (pré-avançada por
+      // baixo dos panos assim que ele foi bloqueado), só falta confirmar
+      // que saímos de lá. NÃO chama apiAdvance() aqui: isso avançaria a
+      // fila de novo por cima, perdendo essa próxima música sem ela nunca
+      // tocar.
+      await apiLimparYoutubeAtual();
+    }else{
+      await apiAdvance();
+    }
     await renderControle();
     btn.disabled = false;
   });
